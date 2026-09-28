@@ -1,0 +1,23 @@
+//token se id nikal ke user ko authenticate karne ka middleware
+import jwt from "jsonwebtoken";
+import AppError from "../utils/AppError.js";
+
+const isAuth = (req , res , next) =>{
+    const {token} = req.cookies;
+    if(!token){
+        throw new AppError(401, "Unauthorized: no token");
+    }
+
+    try{
+        const verifyToken = jwt.verify(token , process.env.JWT_SECRET);
+        req.userId = verifyToken.userId;
+    }
+    catch(error){
+        // expired/galat token = 401, 500 nahi
+        throw new AppError(401, "Invalid or expired token");
+    }
+
+    next();
+}
+
+export default isAuth;
