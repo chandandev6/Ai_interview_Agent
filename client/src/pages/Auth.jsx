@@ -24,7 +24,7 @@ function Auth({ isModel = false, onClose }) {
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
-    // "login" | "register" | "check-email" (signup ke baad "inbox check karo" screen)
+    // "login" | "register" | "check-email" (signup ke baad "inbox check karo") | "forgot" (reset link maango)
     const [mode, setMode] = useState("login");
     const [form, setForm] = useState({ name: "", email: "", password: "" });
     const [showPassword, setShowPassword] = useState(false);
@@ -90,6 +90,21 @@ function Auth({ isModel = false, onClose }) {
         }
     };
 
+    const handleForgotPassword = async (e) => {
+        e.preventDefault();
+        setError("");
+        setInfo("");
+        setLoading(true);
+        try {
+            const result = await axios.post(serverUrl + "/api/auth/forgot-password", { email: form.email }, { withCredentials: true });
+            setInfo(result.data.message);
+        } catch (error) {
+            setError(getErrorMessage(error));
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleGoogleAuth = async () => {
         setError("");
         try {
@@ -139,7 +154,44 @@ function Auth({ isModel = false, onClose }) {
                     <h2>Ai_Interview_Agent</h2>
                 </div>
 
-                {mode === "check-email" ? (
+                {mode === "forgot" ? (
+                    // ---------- forgot password: email do, reset link aayega ----------
+                    <div>
+                        <h1 className="text-xl md:text-2xl font-semibold text-center mb-2">Forgot your password?</h1>
+                        <p className="text-gray-500 text-sm md:text-base text-center mb-6">
+                            Enter your email and we'll send you a link to set a new password.
+                        </p>
+                        <form onSubmit={handleForgotPassword} className="flex flex-col gap-4">
+                            <input
+                                name="email"
+                                type="email"
+                                placeholder="Email"
+                                autoComplete="email"
+                                value={form.email}
+                                onChange={handleChange}
+                                required
+                                className={inputClass}
+                            />
+                            {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+                            {info && (
+                                <p className="text-sm text-green-600 bg-green-50 rounded-lg px-3 py-2">
+                                    {info}
+                                    {import.meta.env.DEV && " (Dev: without SMTP the link is in the server terminal.)"}
+                                </p>
+                            )}
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 transition-colors duration-300 disabled:opacity-60"
+                            >
+                                {loading ? "Sending..." : "Send reset link"}
+                            </button>
+                        </form>
+                        <button onClick={() => switchMode("login")} className="mt-4 w-full text-sm text-gray-500 hover:text-black">
+                            ← Back to login
+                        </button>
+                    </div>
+                ) : mode === "check-email" ? (
                     // ---------- signup ke baad: inbox check karo ----------
                     <div className="text-center">
                         <MdMarkEmailRead className="mx-auto text-green-600 mb-4" size={56} />
@@ -244,6 +296,15 @@ function Auth({ isModel = false, onClose }) {
                                     {showPassword ? <FaEyeSlash /> : <FaEye />}
                                 </button>
                             </div>
+                            {!isRegister && (
+                                <button
+                                    type="button"
+                                    onClick={() => switchMode("forgot")}
+                                    className="-mt-2 self-end text-xs text-gray-500 hover:text-black"
+                                >
+                                    Forgot password?
+                                </button>
+                            )}
 
                             {error && (
                                 <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">

@@ -34,6 +34,15 @@ const userSchema = new mongoose.Schema({
         type:Date,
         select:false
     },
+    // "forgot password" link ka token — same idea: DB me sirf hash, 1 ghante me expire
+    passwordResetToken:{
+        type:String,
+        select:false
+    },
+    passwordResetExpires:{
+        type:Date,
+        select:false
+    },
     credit:{
         type:Number,
         default:500

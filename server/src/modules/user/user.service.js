@@ -3,7 +3,7 @@ import AppError from "../../utils/AppError.js";
 
 // response me bhejne se pehle secret fields hatao (login me .select("+password") kiya ho tab bhi)
 export const toSafeUser = (user) => {
-    const { password, verificationToken, verificationTokenExpires, __v, ...safeUser } = user.toObject ? user.toObject() : user;
+    const { password, verificationToken, verificationTokenExpires, passwordResetToken, passwordResetExpires, __v, ...safeUser } = user.toObject ? user.toObject() : user;
     return safeUser;
 }
 

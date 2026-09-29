@@ -17,7 +17,7 @@
 ### 0.1 Current focus
 | | |
 |---|---|
-| **Now** | Step 2b: Email/password login — code done; you test in browser + set up Gmail SMTP, then commit |
+| **Now** | Step 2b: Email/password + forgot password — code done, SMTP working; you test in browser, then commit |
 | **Next** | Step 3: Client API layer + ProtectedRoute + lazy pages |
 | **Milestone** | 🎯 MVP (end of Stage 4): target **2026-10-22** |
 | **Last updated** | 2026-09-30 |
@@ -40,7 +40,7 @@
 |---|------|------|------|--------|---------|------|-------|
 | 1 | Restructure server into feature modules | 🖥️ | 0.5d | ✅ | 2026-09-29 | 2026-09-29 | `server/src/` layout; API shape `{success,message,data}` |
 | 2 | Security & validation (helmet, zod, rate limit) | 🖥️ | 0.5d | ✅ | 2026-09-30 | 2026-09-30 | env.js, validate.js, rateLimit.js, app.js order + trust proxy |
-| 2b | Email/password login (bcrypt + email verification) | 🖥️🎨 | 1.5d | 🟡 | 2026-09-30 | | 5/5 code done ✅ · ⏳ waiting: your browser test + Gmail App Password |
+| 2b | Email/password login (bcrypt + email verification + forgot password) | 🖥️🎨 | 2d | 🟡 | 2026-09-30 | | Code done ✅ (incl. forgot password) · Gmail SMTP ✅ · ⏳ your browser test + commit |
 | 3 | Client API layer + ProtectedRoute + lazy pages | 🎨 | 0.5d | ⬜ | | | |
 | 4 | Dev tooling (git, prettier, compress assets, README) | 🎨🖥️ | 0.5d | ⬜ | | | |
 | 5 | Interview model + MODES + prompts | 🖥️ | 0.5d | ⬜ | | | |
@@ -71,6 +71,7 @@ Newest first. Format: `date · who · step · what changed`.
 
 | Date | Who | Step | What |
 |------|-----|------|------|
+| 2026-09-30 | Claude | 2b | Forgot password: model `passwordResetToken/Expires`, schemas, `requestPasswordReset` (background send → no slow-response leak) + `resetPassword`, 2 routes, `passwordResetEmail`, Auth.jsx "forgot" screen, `ResetPassword.jsx` + route. Verified 13 scenarios (unknown/known email same reply, bad/expired/reused link, short password, old pw rejected, Google-only user adds a password, unverified → verified). Found Gmail SMTP already configured; test sent 2 mails to @example.com (may bounce). Test users deleted. |
 | 2026-09-30 | Claude | 2b | Task 5 (frontend): `Auth.jsx` rebuilt (Login/Sign up tabs, show-password, inline errors, loading, resend on EMAIL_NOT_VERIFIED, check-inbox screen, Google kept), new `VerifyEmail.jsx` + `/verify-email` route, App.jsx 401 race fix. Lint + build pass. Not yet clicked through in a browser. |
 | 2026-09-30 | Claude | 2b | Tasks 2–4 (backend): `lib/mail/mailer.js` (SMTP or terminal fallback; SMTP required in production via env.js), `auth.emails.js`, schemas, service (register/verify/login/resend, sha256 link tokens, 24h expiry, dummy-hash timing guard, Google login wipes unverified password), `AppError` gets `code`, routes + `authLimiter` 10/15min. Verified 15 scenarios incl. takeover attempt and timing (316 vs 312 ms); test users deleted. |
 | 2026-09-30 | Claude | 2b | Task 1: installed `bcryptjs`, `nodemailer`; User model gets `password` (select:false), `isVerified`, `verificationToken(+Expires)`, lowercase/trim email. DB has 3 existing Google users without `isVerified` (handled in Task 3). |
@@ -95,7 +96,8 @@ Newest first. Format: `date · who · step · what changed`.
 | 2026-09-29 | Decision | No `asyncHandler` wrapper: Express 5 forwards rejected promises to the error middleware, so controllers just `throw new AppError(...)` | ✅ Decided |
 | 2026-09-29 | Action | Commit the foundation + Step 1 work | ✅ Done 2026-09-30 |
 | 2026-09-30 | Decision | Email/password login uses our own bcrypt + MongoDB (not Firebase email auth), with email verification required | ✅ Decided (learning bcrypt) |
-| 2026-09-30 | Action | Create a Gmail App Password and add `SMTP_*` vars to `server/.env` (needed for real emails; until then links print in the terminal) | ⬜ Owner: you (Step 2b Task 2) |
+| 2026-09-30 | Action | Create a Gmail App Password and add `SMTP_*` vars to `server/.env` | ✅ Done — Gmail accepted test mails |
+| 2026-09-30 | Known gap | Password reset does not log out other devices (JWT is stateless, 7-day cookie stays valid). Fix later with a `tokenVersion` on the user checked in `isAuth` | ⏭️ Later (Stage 6) |
 | — | Open | Payment gateway: Razorpay (India) or Stripe? | ❓ Decide before Step 19 |
 | — | Open | Default AI model and cost per interview (credits pricing) | ❓ Decide before Step 7 |
 
@@ -400,9 +402,11 @@ Own passwords with bcrypt (not Firebase email auth) — chosen to learn hashing.
 - [x] `auth.schema.js` + `auth.service.js`: register, verifyEmail, login, resendVerification; Google login sets `isVerified` and wipes an unverified password (pre-account-takeover fix)
 - [x] Controller + routes (`/register`, `/verify-email`, `/login`, `/resend-verification`) + strict `authLimiter` on login/register
 - [x] Frontend: new `Auth.jsx` (Login / Sign up tabs, show password, errors, loading, Google button) + `/verify-email` page (`pages/VerifyEmail.jsx`); App.jsx no longer dispatches null on 401 (race fix)
-- [ ] You: test the flow in the browser (see Done when) and set up Gmail SMTP
+- [x] Forgot password: `POST /forgot-password` (same response for any email, email sent in background) + `POST /reset-password` (1h link, one-time, sets `isVerified`, logs in); "Forgot password?" screen in `Auth.jsx` + `pages/ResetPassword.jsx`. Google-only users can use it to add a password.
+- [x] You: Gmail SMTP in `server/.env` (confirmed working 2026-09-30)
+- [ ] You: test the flow in the browser (see Done when), then commit
 
-**✅ Done when:** sign up → link (email or terminal) → click → logged in; wrong password → "Invalid email or password"; unverified login → "verify your email" + resend; Google login still works.
+**✅ Done when:** sign up → link (email or terminal) → click → logged in; wrong password → "Invalid email or password"; unverified login → "verify your email" + resend; forgot password → email → new password → logged in, old password rejected; Google login still works.
 
 #### Step 3 🎨 Client API layer + protected routes ⏱️ 0.5 day
 - [ ] `src/api/axios.js`: an axios instance with `baseURL: serverUrl`, `withCredentials: true`, and an interceptor that clears the user on 401

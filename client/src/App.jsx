@@ -4,6 +4,7 @@ import Auth from "./pages/Auth";
 import Interviewpage from "./pages/Interviewpage";
 import Interviewreport from "./pages/Interviewreport";
 import VerifyEmail from "./pages/VerifyEmail";
+import ResetPassword from "./pages/ResetPassword";
 import axios from "axios";
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
@@ -36,6 +37,7 @@ function App() {
       <Route path="/" element={<Home />} />
       <Route path="/auth" element={<Auth />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/interview" element={<Interviewpage />} />
       <Route path="/report/:id" element={<Interviewreport />} />
       {/* TODO: /history, /pricing pages banana baaki hai (Navbar/Home se link hai) */}

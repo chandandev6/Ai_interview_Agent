@@ -1,7 +1,7 @@
 import genToken from "../../config/token.js";
 import { cookieOptions } from "../../config/cookie.js";
 import { sendSuccess } from "../../utils/response.js";
-import { loginWithGoogle, registerUser, verifyEmailToken, loginWithPassword, resendVerification } from "./auth.service.js";
+import { loginWithGoogle, registerUser, verifyEmailToken, loginWithPassword, resendVerification, requestPasswordReset, resetPassword } from "./auth.service.js";
 
 const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
 
@@ -38,6 +38,19 @@ export const login = async (req, res) => {
 export const resendVerificationEmail = async (req, res) => {
     await resendVerification(req.body.email);
     return sendSuccess(res, { message: "If this account needs verification, a new link has been sent." });
+}
+
+// email registered ho ya na ho — response hamesha same
+export const forgotPassword = async (req, res) => {
+    await requestPasswordReset(req.body.email);
+    return sendSuccess(res, { message: "If an account exists for this email, a reset link has been sent." });
+}
+
+// naya password set → seedha login
+export const resetPasswordWithToken = async (req, res) => {
+    const user = await resetPassword(req.body);
+    setAuthCookie(res, user);
+    return sendSuccess(res, { message: "Password updated. You're now logged in.", data: { user } });
 }
 
 export const logout = async (req, res) => {

@@ -6,10 +6,11 @@ import AppError from "../../utils/AppError.js";
 import { sendMail } from "../../lib/mail/mailer.js";
 import User from "../user/user.model.js";
 import { findOrCreateGoogleUser, toSafeUser } from "../user/user.service.js";
-import { verificationEmail } from "./auth.emails.js";
+import { verificationEmail, passwordResetEmail } from "./auth.emails.js";
 
 const BCRYPT_ROUNDS = 12; // 2^12 rounds ≈ 0.2s per hash — user ko pata nahi chalta, attacker ke liye bahut slow
 const VERIFY_LINK_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const RESET_LINK_TTL = 60 * 60 * 1000;        // 1 hour — password badalne ka link jaldi expire ho (zyada sensitive)
 
 // user na mile tab bhi ek bcrypt.compare chalao — warna "no user" wala jawab turant aata aur
 // response time se attacker pata laga leta ki email registered hai ya nahi (timing attack)
@@ -18,26 +19,35 @@ const DUMMY_HASH = bcrypt.hashSync("dummy-password-for-timing", BCRYPT_ROUNDS);
 const hashToken = (token) => crypto.createHash("sha256").update(token).digest("hex");
 
 // link ke liye random token: plain wala email me jaata hai, uska hash DB me
-const createVerificationToken = () => {
+const createLinkToken = (ttl) => {
     const token = crypto.randomBytes(32).toString("hex");
-    return { token, tokenHash: hashToken(token), expires: new Date(Date.now() + VERIFY_LINK_TTL) };
+    return { token, tokenHash: hashToken(token), expires: new Date(Date.now() + ttl) };
+}
+
+// CLIENT_URL me comma se kai URLs ho sakte hai — link pehle wale (main frontend) par
+const frontendLink = (path, token) => `${env.CLIENT_URL.split(",")[0]}${path}?token=${token}`;
+
+const trySendMail = async (mail, failMessage) => {
+    try {
+        await sendMail(mail);
+    }
+    catch (error) {
+        console.error("Failed to send email:", error.message);
+        throw new AppError(502, failMessage);
+    }
 }
 
 const sendVerificationLink = async (user) => {
-    const { token, tokenHash, expires } = createVerificationToken();
+    const { token, tokenHash, expires } = createLinkToken(VERIFY_LINK_TTL);
     user.verificationToken = tokenHash;
     user.verificationTokenExpires = expires;
     await user.save();
 
-    // CLIENT_URL me comma se kai URLs ho sakte hai — link pehle wale (main frontend) par
-    const link = `${env.CLIENT_URL.split(",")[0]}/verify-email?token=${token}`;
-    try {
-        await sendMail({ to: user.email, ...verificationEmail({ name: user.name, link }) });
-    }
-    catch (error) {
-        console.error("Failed to send verification email:", error.message);
-        throw new AppError(502, "Could not send the verification email. Please try 'Resend' in a minute.");
-    }
+    const link = frontendLink("/verify-email", token);
+    await trySendMail(
+        { to: user.email, ...verificationEmail({ name: user.name, link }) },
+        "Could not send the verification email. Please try 'Resend' in a minute."
+    );
 }
 
 // client ka Firebase ID token verify karo — name/email pe bharosa mat karo, token se nikalo
@@ -64,7 +74,7 @@ export const registerUser = async ({ name, email, password }) => {
     const existing = await User.findOne({ email }).select("+password");
 
     if(existing && !existing.password){
-        throw new AppError(409, "This email is registered with Google. Please use 'Continue with Google'.");
+        throw new AppError(409, "This email is registered with Google. Use 'Continue with Google', or 'Forgot password' to set a password.");
     }
     if(existing?.isVerified){
         throw new AppError(409, "An account with this email already exists. Please log in.");
@@ -134,4 +144,46 @@ export const resendVerification = async (email) => {
     if(user && !user.isVerified && user.password){
         await sendVerificationLink(user);
     }
+}
+
+// "forgot password" — email par reset link bhejo
+export const requestPasswordReset = async (email) => {
+    const user = await User.findOne({ email });
+
+    // user na ho tab bhi same "OK" response (controller me) — warna isse registered emails pata chal jaate
+    // Google-only user bhi yaha se password set kar sakta hai: link par click = email uska hai, ye proof hai
+    if(!user) return;
+
+    const { token, tokenHash, expires } = createLinkToken(RESET_LINK_TTL);
+    user.passwordResetToken = tokenHash;
+    user.passwordResetExpires = expires;
+    await user.save();
+
+    // await NAHI — SMTP ~1s leta hai; wait karte to registered email par jawab slow aata aur
+    // anjaan email par turant → timing se pata chal jaata ki email registered hai. Background me bhejo.
+    const link = frontendLink("/reset-password", token);
+    sendMail({ to: user.email, ...passwordResetEmail({ name: user.name, link }) })
+        .catch((error) => console.error("Failed to send password reset email:", error.message));
+}
+
+export const resetPassword = async ({ token, password }) => {
+    const user = await User.findOne({
+        passwordResetToken: hashToken(token),
+        passwordResetExpires: { $gt: new Date() },
+    });
+    if(!user){
+        throw new AppError(400, "This reset link is invalid or has expired. Please request a new one.", "INVALID_RESET_LINK");
+    }
+
+    user.password = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    // link ek hi baar kaam kare
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    // email ke link se aaya = email ka owner hai → verified bhi maan lo (verify link ki zarurat nahi)
+    user.isVerified = true;
+    user.verificationToken = undefined;
+    user.verificationTokenExpires = undefined;
+    await user.save();
+
+    return toSafeUser(user);
 }
