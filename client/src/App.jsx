@@ -1,13 +1,13 @@
-import React from "react";
 import { Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
+import Interviewpage from "./pages/Interviewpage";
+import Interviewreport from "./pages/Interviewreport";
 import axios from "axios";
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { setUserData } from "./redux/userSlice.js";
-
-export const serverUrl = "http://localhost:8000"; 
+import { serverUrl } from "./config/server.js";
 
 function App() {
   const dispatch = useDispatch();
@@ -17,8 +17,8 @@ function App() {
         const result = await axios.get(serverUrl + "/api/user/current-user", {
           withCredentials: true,
         });
-        // console.log(result.data.user);
-        dispatch(setUserData(result.data.user));
+        // console.log(result.data.data.user);
+        dispatch(setUserData(result.data.data.user));
       }
       catch (error) {
         console.error("Error fetching user:", error);
@@ -28,11 +28,14 @@ function App() {
     }
 
     getUser();
-  } , [])
+  } , [dispatch])
   return (
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/auth" element={<Auth />} />
+      <Route path="/interview" element={<Interviewpage />} />
+      <Route path="/report/:id" element={<Interviewreport />} />
+      {/* TODO: /history, /pricing pages banana baaki hai (Navbar/Home se link hai) */}
     </Routes>
   );
 }
