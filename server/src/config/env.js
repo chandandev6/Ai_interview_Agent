@@ -18,6 +18,16 @@ const envSchema = z
 
         OPENROUTER_API_KEY: z.string().min(1),
         OPENROUTER_MODEL: z.string().default("anthropic/claude-haiku-4.5"),
+        // comma se alag backup models — main busy/rate-limited ho to OpenRouter agla try karta hai (free models ke liye zaruri)
+        OPENROUTER_FALLBACK_MODELS: z
+            .string()
+            .default("")
+            .transform((list) =>
+                list
+                    .split(",")
+                    .map((model) => model.trim())
+                    .filter(Boolean),
+            ),
 
         // email bhejne ke liye SMTP (Gmail: smtp.gmail.com + App Password) — local me optional, na ho to link terminal me print
         SMTP_HOST: z.string().optional(),

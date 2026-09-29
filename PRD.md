@@ -17,8 +17,8 @@
 ### 0.1 Current focus
 | | |
 |---|---|
-| **Now** | Step 4: Dev tooling — setup done; you: commit Step 3 → `npm run format` → commit |
-| **Next** | Stage 2 → Step 5: Interview model + MODES + prompts |
+| **Now** | Step 6: Resume upload & parsing |
+| **Next** | Step 7: Start interview (atomic credits + questions) |
 | **Milestone** | 🎯 MVP (end of Stage 4): target **2026-10-22** |
 | **Last updated** | 2026-09-30 |
 
@@ -26,14 +26,14 @@
 | Stage | Steps | Done | Progress | Target date | Status |
 |-------|-------|------|----------|-------------|--------|
 | 0. Foundation | — | ✅ | `██████████` 100% | 2026-09-29 | ✅ |
-| 1. Setup for growth | 1–4 (+2b) | 4/5 | `████████░░` 80% | 2026-10-02 | 🟡 |
-| 2. Interview backend | 5–9 | 0/5 | `░░░░░░░░░░` 0% | 2026-10-09 | ⬜ |
+| 1. Setup for growth | 1–4 (+2b) | 5/5 | `██████████` 100% | 2026-10-02 | ✅ |
+| 2. Interview backend | 5–9 | 1/5 | `██░░░░░░░░` 20% | 2026-10-09 | 🟡 |
 | 3. Interview frontend | 10–14 | 0/5 | `░░░░░░░░░░` 0% | 2026-10-17 | ⬜ |
 | 4. History & reports 🎯 MVP | 15–17 | 0/3 | `░░░░░░░░░░` 0% | 2026-10-22 | ⬜ |
 | 5. Payments | 18–20 | 0/3 | `░░░░░░░░░░` 0% | 2026-10-28 | ⬜ |
 | 6. Production & scale | 21–26 | 0/6 | `░░░░░░░░░░` 0% | 2026-11-06 | ⬜ |
 | 7. Differentiators | 27–33 | 0/7 | `░░░░░░░░░░` 0% | after launch | ⬜ |
-| **Total (Steps 1–26 + 2b)** | | **4/27** | `█░░░░░░░░░` 15% | | |
+| **Total (Steps 1–26 + 2b)** | | **6/27** | `██░░░░░░░░` 22% | | |
 
 ### 0.3 Step board
 | # | Step | Area | Est. | Status | Started | Done | Notes |
@@ -42,8 +42,8 @@
 | 2 | Security & validation (helmet, zod, rate limit) | 🖥️ | 0.5d | ✅ | 2026-09-30 | 2026-09-30 | env.js, validate.js, rateLimit.js, app.js order + trust proxy |
 | 2b | Email/password login (bcrypt + email verification + forgot password) | 🖥️🎨 | 2d | ✅ | 2026-09-30 | 2026-09-30 | Committed `742ea00` (incl. forgot password, Gmail SMTP) |
 | 3 | Client API layer + ProtectedRoute + lazy pages | 🎨 | 0.5d | ✅ | 2026-09-30 | 2026-09-30 | `src/api/`, interceptor, `loading`, ProtectedRoute, lazy pages; 10/10 headless-Chrome checks |
-| 4 | Dev tooling (git, prettier, compress assets, README) | 🎨🖥️ | 0.5d | 🟡 | 2026-09-30 | | Setup done ✅ · ⏳ you: commit Step 3, then run `npm run format` + commit |
-| 5 | Interview model + MODES + prompts | 🖥️ | 0.5d | ⬜ | | | |
+| 4 | Dev tooling (git, prettier, compress assets, README) | 🎨🖥️ | 0.5d | ✅ | 2026-09-30 | 2026-09-30 | Committed `d2f2c78` (incl. Prettier run) |
+| 5 | Interview model + MODES + prompts | 🖥️ | 0.5d | ✅ | 2026-09-30 | 2026-09-30 | model, modes, prompts, AI schemas, `askAiJson`; all prompts reviewed live on the free model |
 | 6 | Resume upload & parsing | 🖥️ | 1d | ⬜ | | | |
 | 7 | Start interview (atomic credits + questions) | 🖥️ | 1d | ⬜ | | | |
 | 8 | Submit & evaluate answer | 🖥️ | 1d | ⬜ | | | |
@@ -71,6 +71,8 @@ Newest first. Format: `date · who · step · what changed`.
 
 | Date | Who | Step | What |
 |------|-----|------|------|
+| 2026-09-30 | Claude | 5 | ✅ Step 5: `interview.modes.js` (MODES with focus, rubric, weights; plan; time limits; experience levels), `interview.model.js`, `interview.prompts.js` (4 prompts, data-in-tags anti-injection), `interview.ai-schemas.js`, `askAiJson` + fallback models (env `OPENROUTER_FALLBACK_MODELS`). Live review on free model: resume parse ignored injected line; questions used candidate's projects; good/weak/cheat answers scored 8/2/0; report specific; model validates. `npm run check` passes. Not committed. |
+| 2026-09-30 | You | 3, 4 | ✅ Committed Step 3 (`183fa00`) and Step 4 (`d2f2c78`, incl. Prettier format). **Stage 1 complete.** |
 | 2026-09-30 | Claude | 4 | Root Prettier + scripts, server ESLint (3 fixes), WebP images (−88%), README. Verified: lint clean both apps, client build, all 8 WebP load in Chrome, Prettier dry run on a copy keeps lint/build/server working. Format run left to user so Step 3 commit stays readable. |
 | 2026-09-30 | Claude | 3 | ✅ Step 3: `api/axios.js` (instance + 401 interceptor, ignores `/api/auth/*` and current-user), `auth.api.js`, `user.api.js`, `utils/getErrorMessage.js`; `userSlice.loading` + `finishLoading`; `ProtectedRoute` + `PageLoader`; lazy pages + lazy login popup; Navbar placeholders while loading; login returns to `from` page. Headless Chrome: redirect when logged out, back to /interview after login, survives refresh, no "0 credits" flash, logout works, no console errors. Interceptor's session-expired path not exercised yet (no protected API besides current-user). Not committed. |
 | 2026-09-30 | You | 2b | ✅ Step 2b committed (`a7d62e8`, `742ea00`). |
@@ -102,7 +104,9 @@ Newest first. Format: `date · who · step · what changed`.
 | 2026-09-30 | Action | Create a Gmail App Password and add `SMTP_*` vars to `server/.env` | ✅ Done — Gmail accepted test mails |
 | 2026-09-30 | Known gap | Password reset does not log out other devices (JWT is stateless, 7-day cookie stays valid). Fix later with a `tokenVersion` on the user checked in `isAuth` | ⏭️ Later (Stage 6) |
 | — | Open | Payment gateway: Razorpay (India) or Stripe? | ❓ Decide before Step 19 |
-| — | Open | Default AI model and cost per interview (credits pricing) | ❓ Decide before Step 7 |
+| 2026-09-30 | Decision | AI: free models for now — `nvidia/nemotron-3-super-120b-a12b:free` + fallbacks `google/gemma-4-31b-it:free`, `google/gemma-4-26b-a4b-it:free` (OpenRouter account is free tier). Switch `OPENROUTER_MODEL` to a paid model before real users. | ✅ Decided |
+| 2026-09-30 | Decision | Interview: 50 credits (all modes), 5 questions (easy, easy, medium, medium, hard), time limits 60/90/120 s, resume optional, follow-up questions later (Stage 7) | ✅ Decided |
+| 2026-09-30 | Action | Fix `MAIL_FROM` in `server/.env` to `InterviewIQ <you@gmail.com>` format | ⬜ Owner: you |
 
 ---
 
@@ -423,7 +427,7 @@ Own passwords with bcrypt (not Firebase email auth) — chosen to learn hashing.
 #### Step 4 🎨🖥️ Dev tooling ⏱️ 0.5 day
 - [x] `git init` at `Ai_interview_Agent/` (if not already a repo) and first commit; confirm `.env` is **not** committed (repo existed; `.env` is gitignored)
 - [x] Prettier config shared by client and server; ESLint for the server — root `package.json` (`format`, `format:check`, `lint`, `check`), `.prettierrc.json` (4 spaces, 120 cols, JSON 2 spaces), `.prettierignore` (md, lockfiles, dist); `server/eslint.config.js` (fixed 3 unused-var errors)
-- [ ] You: run `npm run format` once (after committing Step 3) — dry run on a copy: 43 files, lint/build/server boot all fine
+- [x] You: run `npm run format` once (after committing Step 3) — dry run on a copy: 43 files, lint/build/server boot all fine
 - [x] Compress images in `client/src/assets` (use WebP, target < 60 kB each) and videos (target < 2 MB each) — 8 PNGs 1283 kB → 157 kB WebP (11–28 kB each, PSNR 40–45 dB); videos already 1.1/1.3 MB; `MM.png` unused, left as is
 - [x] Root `README.md` with the run instructions (copy §12) — plus features, stack, structure, env tables, scripts, API list
 
@@ -434,10 +438,10 @@ Own passwords with bcrypt (not Firebase email auth) — chosen to learn hashing.
 ### Stage 2 — Interview backend
 
 #### Step 5 🖥️ Interview model + mode config ⏱️ 0.5 day
-- [ ] `modules/interview/interview.model.js` (schema in §5) with index `{ userId: 1, createdAt: -1 }`
-- [ ] `modules/interview/modes.js`: the `MODES` map (`hr`, `technical`, `confidence`), each with `cost`, `questionCount`, time limits by difficulty, and a rubric
-- [ ] `modules/interview/prompts.js`: system prompts for question generation, per-answer evaluation, and the final report. Every prompt asks for **strict JSON**.
-- [ ] Zod schemas for the AI outputs (questions, evaluation, report)
+- [x] `modules/interview/interview.model.js` (schema in §5) with index `{ userId: 1, createdAt: -1 }` — stores the resume **AI summary** (`resume: {skills, projects, experienceSummary}`), not the raw text; questions have `answer: null` until answered
+- [x] `modules/interview/interview.modes.js`: the `MODES` map (`hr`, `technical`, `confidence`), each with `cost`, `questionCount`, time limits by difficulty, and a rubric
+- [x] `modules/interview/interview.prompts.js`: system prompts for question generation, per-answer evaluation, and the final report. Every prompt asks for **strict JSON**.
+- [x] Zod schemas for the AI outputs (questions, evaluation, report) — `interview.ai-schemas.js` (+ resume); `lib/ai/openRouter.js` gains `askAiJson(messages, schema)` (JSON extraction, zod check, 2 retries with backoff, fallback models, error-in-200 handling)
 
 **✅ Done when:** the model imports cleanly and the prompts are reviewed.
 

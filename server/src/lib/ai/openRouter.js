@@ -3,13 +3,26 @@ import { env } from "../../config/env.js";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
+// pehla main model, baaki backup — OpenRouter list me se jo free/available ho usse jawab dilwata hai
+const MODELS = [env.OPENROUTER_MODEL, ...env.OPENROUTER_FALLBACK_MODELS];
+
+// kuch models JSON ko ```json ... ``` me lapet dete hai ya aage-peeche text likh dete hai — sirf { ... } wala hissa lo
+const extractJson = (text) => {
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start === -1 || end <= start) {
+        throw new Error("AI reply contains no JSON object");
+    }
+    return JSON.parse(text.slice(start, end + 1));
+};
+
 // messages: [{ role: "system" | "user" | "assistant", content: "..." }]
 export const askAi = async (messages, { json = false } = {}) => {
     try {
         const response = await axios.post(
             OPENROUTER_URL,
             {
-                model: env.OPENROUTER_MODEL,
+                ...(MODELS.length > 1 ? { models: MODELS } : { model: MODELS[0] }),
                 messages,
                 ...(json && { response_format: { type: "json_object" } }),
             },
@@ -22,13 +35,54 @@ export const askAi = async (messages, { json = false } = {}) => {
             },
         );
 
-        const content = response.data?.choices?.[0]?.message?.content;
-        if (!content) {
-            throw new Error("Empty response from AI");
+        // OpenRouter kabhi status 200 ke saath body me error bhejta hai (sab models busy) — usse asli error banao
+        if (response.data?.error) {
+            throw new Error(`AI provider error: ${response.data.error.message || JSON.stringify(response.data.error)}`);
         }
-        return json ? JSON.parse(content) : content;
+
+        // kis model ne jawab diya (fallback list me se) — error me dikhe to debug aasaan
+        const { model, choices } = response.data;
+        const content = choices?.[0]?.message?.content;
+        if (!content) {
+            throw new Error(`Empty response from AI (${model}, finish: ${choices?.[0]?.finish_reason})`);
+        }
+        try {
+            return json ? extractJson(content) : content;
+        } catch (error) {
+            // cause = asli error bhi saath rahe (stack trace), sirf message me model ka naam jodte hai
+            throw new Error(`${error.message} (${model}): ${content.slice(0, 120)}`, { cause: error });
+        }
     } catch (error) {
-        console.error("Error in askAi:", error.response?.data || error.message);
+        console.error("Error in askAi:", error.response?.data?.error?.message || error.message);
         throw error;
     }
+};
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// free models busy/flaky rehte hai — 2 retry (total 3 try), beech me thoda ruko taaki rate-limit hat jaaye
+const DEFAULT_RETRIES = 2;
+const RETRY_DELAY_MS = 1500;
+
+// AI ka jawab = untrusted input (jaise request body): parse → zod check → galat ho to dobara maango
+// return: schema se saaf kiya hua data. Sab try fail → error throw (caller credits refund karke 503 dega)
+export const askAiJson = async (messages, schema, { retries = DEFAULT_RETRIES } = {}) => {
+    let lastError;
+    for (let attempt = 1; attempt <= retries + 1; attempt++) {
+        try {
+            const result = schema.safeParse(await askAi(messages, { json: true }));
+            if (result.success) {
+                return result.data;
+            }
+            lastError = new Error(
+                "AI reply failed validation: " +
+                    result.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; "),
+            );
+        } catch (error) {
+            lastError = error;
+        }
+        console.warn(`AI attempt ${attempt} failed: ${lastError.message}`);
+        if (attempt <= retries) await sleep(RETRY_DELAY_MS * attempt);
+    }
+    throw lastError;
 };
