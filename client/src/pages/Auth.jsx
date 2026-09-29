@@ -7,15 +7,11 @@ import { MdMarkEmailRead } from "react-icons/md";
 import { motion } from "motion/react";
 import { auth, provider } from "../utils/firebase";
 import { signInWithPopup } from "firebase/auth";
-import axios from "axios";
-import { serverUrl } from "../config/server.js";
 import { useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { setUserData } from "../redux/userSlice.js";
-
-// server ka message dikhao — validate() wala "body.password: " prefix user ke kaam ka nahi, hata do
-const getErrorMessage = (error) =>
-    (error.response?.data?.message || "Something went wrong. Please try again.").replace(/\b(body|params|query)\.\w+: /g, "");
+import { googleLogin, registerUser, loginUser, resendVerification, forgotPassword } from "../api/auth.api.js";
+import getErrorMessage from "../utils/getErrorMessage.js";
 
 const inputClass =
     "w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-black focus:ring-1 focus:ring-black";
@@ -23,6 +19,7 @@ const inputClass =
 function Auth({ isModel = false, onClose }) {
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    const location = useLocation();
 
     // "login" | "register" | "check-email" (signup ke baad "inbox check karo") | "forgot" (reset link maango)
     const [mode, setMode] = useState("login");
@@ -46,7 +43,8 @@ function Auth({ isModel = false, onClose }) {
 
     const onLoggedIn = (user) => {
         dispatch(setUserData(user)); // Navbar update + modal khud band (Authmodel)
-        if (!isModel) navigate("/");
+        // ProtectedRoute ne yaha bheja tha to wapas usi page par, warna home
+        if (!isModel) navigate(location.state?.from || "/", { replace: true });
     };
 
     const handleSubmit = async (e) => {
@@ -57,15 +55,11 @@ function Auth({ isModel = false, onClose }) {
         setLoading(true);
         try {
             if (isRegister) {
-                await axios.post(serverUrl + "/api/auth/register", form, { withCredentials: true });
+                await registerUser(form);
                 setMode("check-email"); // signup par login nahi — pehle email verify
             } else {
-                const result = await axios.post(
-                    serverUrl + "/api/auth/login",
-                    { email: form.email, password: form.password },
-                    { withCredentials: true }
-                );
-                onLoggedIn(result.data.data.user);
+                const res = await loginUser(form);
+                onLoggedIn(res.data.user);
             }
         } catch (error) {
             setError(getErrorMessage(error));
@@ -81,8 +75,8 @@ function Auth({ isModel = false, onClose }) {
         setInfo("");
         setLoading(true);
         try {
-            const result = await axios.post(serverUrl + "/api/auth/resend-verification", { email: form.email }, { withCredentials: true });
-            setInfo(result.data.message);
+            const res = await resendVerification(form.email);
+            setInfo(res.message);
         } catch (error) {
             setError(getErrorMessage(error));
         } finally {
@@ -96,8 +90,8 @@ function Auth({ isModel = false, onClose }) {
         setInfo("");
         setLoading(true);
         try {
-            const result = await axios.post(serverUrl + "/api/auth/forgot-password", { email: form.email }, { withCredentials: true });
-            setInfo(result.data.message);
+            const res = await forgotPassword(form.email);
+            setInfo(res.message);
         } catch (error) {
             setError(getErrorMessage(error));
         } finally {
@@ -112,8 +106,8 @@ function Auth({ isModel = false, onClose }) {
             // server ko sirf Firebase ID token bhejo — server usse verify karke name/email nikalega
             const idToken = await response.user.getIdToken();
 
-            const result = await axios.post(serverUrl + "/api/auth/google", { idToken }, { withCredentials: true });
-            onLoggedIn(result.data.data.user);
+            const res = await googleLogin(idToken);
+            onLoggedIn(res.data.user);
         } catch (error) {
             // user ne khud popup band kiya — error dikhane ki zarurat nahi
             if (error.code === "auth/popup-closed-by-user" || error.code === "auth/cancelled-popup-request") return;
@@ -187,7 +181,10 @@ function Auth({ isModel = false, onClose }) {
                                 {loading ? "Sending..." : "Send reset link"}
                             </button>
                         </form>
-                        <button onClick={() => switchMode("login")} className="mt-4 w-full text-sm text-gray-500 hover:text-black">
+                        <button
+                            onClick={() => switchMode("login")}
+                            className="mt-4 w-full text-sm text-gray-500 hover:text-black"
+                        >
                             ← Back to login
                         </button>
                     </div>
@@ -214,7 +211,10 @@ function Auth({ isModel = false, onClose }) {
                         >
                             {loading ? "Sending..." : "Resend link"}
                         </button>
-                        <button onClick={() => switchMode("login")} className="mt-4 text-sm text-gray-500 hover:text-black">
+                        <button
+                            onClick={() => switchMode("login")}
+                            className="mt-4 text-sm text-gray-500 hover:text-black"
+                        >
                             ← Back to login
                         </button>
                     </div>
@@ -229,8 +229,8 @@ function Auth({ isModel = false, onClose }) {
                         </h1>
 
                         <p className="text-center text-gray-500 text-sm md:text-base leading-relaxed mb-6">
-                            Sign in to start your AI-powered mock interview, track your progress,
-                            and unlock personalized feedback to enhance your interview skills.
+                            Sign in to start your AI-powered mock interview, track your progress, and unlock
+                            personalized feedback to enhance your interview skills.
                         </p>
 
                         {/* Login / Sign up tabs */}
@@ -241,7 +241,9 @@ function Auth({ isModel = false, onClose }) {
                                     type="button"
                                     onClick={() => switchMode(tab)}
                                     className={`flex-1 py-2 text-sm rounded-md transition-colors ${
-                                        mode === tab ? "bg-white shadow-sm font-medium" : "text-gray-500 hover:text-black"
+                                        mode === tab
+                                            ? "bg-white shadow-sm font-medium"
+                                            : "text-gray-500 hover:text-black"
                                     }`}
                                 >
                                     {tab === "login" ? "Login" : "Sign up"}

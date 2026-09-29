@@ -2,10 +2,10 @@
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import axios from "axios";
 import { FaCheckCircle, FaEye, FaEyeSlash } from "react-icons/fa";
-import { serverUrl } from "../config/server.js";
 import { setUserData } from "../redux/userSlice.js";
+import { resetPassword } from "../api/auth.api.js";
+import getErrorMessage from "../utils/getErrorMessage.js";
 
 const inputClass =
     "w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-black focus:ring-1 focus:ring-black";
@@ -33,12 +33,12 @@ function ResetPassword() {
         }
         setLoading(true);
         try {
-            const result = await axios.post(serverUrl + "/api/auth/reset-password", { token, password }, { withCredentials: true });
-            dispatch(setUserData(result.data.data.user)); // server ne cookie de di — ab logged in
+            const res = await resetPassword({ token, password });
+            dispatch(setUserData(res.data.user)); // server ne cookie de di — ab logged in
             setDone(true);
             setTimeout(() => navigate("/"), 2000);
         } catch (error) {
-            setError((error.response?.data?.message || "Something went wrong. Please try again.").replace(/\b(body|params|query)\.\w+: /g, ""));
+            setError(getErrorMessage(error));
         } finally {
             setLoading(false);
         }
@@ -56,7 +56,9 @@ function ResetPassword() {
                 ) : (
                     <>
                         <h1 className="text-xl md:text-2xl font-semibold text-center mb-2">Set a new password</h1>
-                        <p className="text-gray-500 text-sm text-center mb-6">Choose a password with at least 8 characters.</p>
+                        <p className="text-gray-500 text-sm text-center mb-6">
+                            Choose a password with at least 8 characters.
+                        </p>
 
                         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                             <div className="relative">
@@ -102,7 +104,10 @@ function ResetPassword() {
                                 {loading ? "Saving..." : "Update password"}
                             </button>
                         </form>
-                        <button onClick={() => navigate("/auth")} className="mt-4 w-full text-sm text-gray-500 hover:text-black">
+                        <button
+                            onClick={() => navigate("/auth")}
+                            className="mt-4 w-full text-sm text-gray-500 hover:text-black"
+                        >
                             ← Back to login
                         </button>
                     </>

@@ -2,10 +2,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import axios from "axios";
 import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
-import { serverUrl } from "../config/server.js";
 import { setUserData } from "../redux/userSlice.js";
+import { verifyEmail } from "../api/auth.api.js";
+import getErrorMessage from "../utils/getErrorMessage.js";
 
 function VerifyEmail() {
     const dispatch = useDispatch();
@@ -25,13 +25,13 @@ function VerifyEmail() {
 
         const verify = async () => {
             try {
-                const result = await axios.post(serverUrl + "/api/auth/verify-email", { token }, { withCredentials: true });
-                dispatch(setUserData(result.data.data.user)); // server ne cookie bhi de di — ab logged in
+                const res = await verifyEmail(token);
+                dispatch(setUserData(res.data.user)); // server ne cookie bhi de di — ab logged in
                 setStatus("success");
                 setTimeout(() => navigate("/"), 2000);
             } catch (error) {
                 setStatus("error");
-                setMessage(error.response?.data?.message || "Something went wrong. Please try again.");
+                setMessage(getErrorMessage(error));
             }
         };
         verify();
