@@ -1,4 +1,5 @@
 import axios from "axios";
+import { env } from "../../config/env.js";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
@@ -8,13 +9,13 @@ export const askAi = async (messages, { json = false } = {}) => {
         const response = await axios.post(
             OPENROUTER_URL,
             {
-                model: process.env.OPENROUTER_MODEL || "anthropic/claude-haiku-4.5",
+                model: env.OPENROUTER_MODEL,
                 messages,
                 ...(json && { response_format: { type: "json_object" } }),
             },
             {
                 headers: {
-                    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                    Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
                     "Content-Type": "application/json",
                 },
                 timeout: 60000,

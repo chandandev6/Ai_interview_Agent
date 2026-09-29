@@ -17,8 +17,8 @@
 ### 0.1 Current focus
 | | |
 |---|---|
-| **Now** | Step 2: Security & validation (helmet, zod, rate limit) |
-| **Next** | Step 3: Client API layer + ProtectedRoute |
+| **Now** | Step 3: Client API layer + ProtectedRoute + lazy pages |
+| **Next** | Step 4: Dev tooling (prettier, ESLint, compress assets, README) |
 | **Milestone** | 🎯 MVP (end of Stage 4): target **2026-10-22** |
 | **Last updated** | 2026-09-30 |
 
@@ -26,20 +26,20 @@
 | Stage | Steps | Done | Progress | Target date | Status |
 |-------|-------|------|----------|-------------|--------|
 | 0. Foundation | — | ✅ | `██████████` 100% | 2026-09-29 | ✅ |
-| 1. Setup for growth | 1–4 | 1/4 | `███░░░░░░░` 25% | 2026-10-02 | 🟡 |
+| 1. Setup for growth | 1–4 | 2/4 | `█████░░░░░` 50% | 2026-10-02 | 🟡 |
 | 2. Interview backend | 5–9 | 0/5 | `░░░░░░░░░░` 0% | 2026-10-09 | ⬜ |
 | 3. Interview frontend | 10–14 | 0/5 | `░░░░░░░░░░` 0% | 2026-10-17 | ⬜ |
 | 4. History & reports 🎯 MVP | 15–17 | 0/3 | `░░░░░░░░░░` 0% | 2026-10-22 | ⬜ |
 | 5. Payments | 18–20 | 0/3 | `░░░░░░░░░░` 0% | 2026-10-28 | ⬜ |
 | 6. Production & scale | 21–26 | 0/6 | `░░░░░░░░░░` 0% | 2026-11-06 | ⬜ |
 | 7. Differentiators | 27–33 | 0/7 | `░░░░░░░░░░` 0% | after launch | ⬜ |
-| **Total (Steps 1–26)** | | **1/26** | `░░░░░░░░░░` 4% | | |
+| **Total (Steps 1–26)** | | **2/26** | `█░░░░░░░░░` 8% | | |
 
 ### 0.3 Step board
 | # | Step | Area | Est. | Status | Started | Done | Notes |
 |---|------|------|------|--------|---------|------|-------|
 | 1 | Restructure server into feature modules | 🖥️ | 0.5d | ✅ | 2026-09-29 | 2026-09-29 | `server/src/` layout; API shape `{success,message,data}` |
-| 2 | Security & validation (helmet, zod, rate limit) | 🖥️ | 0.5d | 🟡 | 2026-09-30 | | Packages installed; code not written yet |
+| 2 | Security & validation (helmet, zod, rate limit) | 🖥️ | 0.5d | ✅ | 2026-09-30 | 2026-09-30 | env.js, validate.js, rateLimit.js, app.js order + trust proxy |
 | 3 | Client API layer + ProtectedRoute + lazy pages | 🎨 | 0.5d | ⬜ | | | |
 | 4 | Dev tooling (git, prettier, compress assets, README) | 🎨🖥️ | 0.5d | ⬜ | | | |
 | 5 | Interview model + MODES + prompts | 🖥️ | 0.5d | ⬜ | | | |
@@ -70,6 +70,10 @@ Newest first. Format: `date · who · step · what changed`.
 
 | Date | Who | Step | What |
 |------|-----|------|------|
+| 2026-09-30 | Claude | 2 | ✅ Step 2 done. Task 4: `app.js` wired — trust proxy (prod only) → helmet → cors → compression → /health → globalLimiter → json → cookies → routes. Verified: helmet headers + no `X-Powered-By`, gzip on >1 kB, bad body → 400, request 101 → 429 with CORS header, /health still 200 while limited. |
+| 2026-09-30 | Claude | 2 | Task 3: `middlewares/rateLimit.js` (`globalLimiter` 100/min per IP, `aiLimiter` 10/min per user, our `{success,message}` shape, `RateLimit` headers). Verified on a throwaway app: request 101 → 429; user A's 11th AI call → 429 while user B on the same IP → 200. Not wired into app.js yet. |
+| 2026-09-30 | Claude | 2 | Task 2: `middlewares/validate.js` + `modules/auth/auth.schema.js`; `POST /api/auth/google` validated. Verified: `{}`, no body, number, empty string → 400 with clear message; broken JSON → 400; extra fields stripped. |
+| 2026-09-30 | Claude | 2 | Task 1: `config/env.js` (zod) — server exits with a list of bad vars; switched app.js, cookie, db, token, isAuth, firebaseAdmin, openRouter, server.js to `env.X`. Verified all endpoints + JWT sign/verify. |
 | 2026-09-30 | Claude | 0 | Health check: server syntax/boot/Mongo/endpoints OK, client build OK. Fixed 4 lint errors (unused props in Step1/2/3 stubs → TODOs). Added missing env vars to `server/.env` and `client/.env`. Added `CLAUDE.md` with working rules (explain first, wait for go). Installed `helmet compression express-rate-limit zod` for Step 2. |
 | 2026-09-29 | Claude | 1 | Server moved to `server/src/` (app.js, server.js with graceful shutdown, `modules/auth`, `modules/user` with controller/service/routes, `AppError`, `sendSuccess`, `notFound` + `errorHandler`). All responses are now `{ success, message, data }`; client updated to read `result.data.data.user`. Verified: health, current-user (valid, missing cookie), Google token checks, logout, 404, bad JSON → 400, SIGTERM shutdown. |
 | 2026-09-29 | Claude | 0 | Merged the step plan into this PRD as a tracker (§0, §10) |
@@ -375,10 +379,11 @@ Rules:
 **✅ Done when:** login, logout and current-user still work, and `/health` returns ok.
 
 #### Step 2 🖥️ Security & validation basics ⏱️ 0.5 day
-- [ ] `npm i helmet compression express-rate-limit zod`
-- [ ] `src/config/env.js`: validate all env vars with zod at startup, so the server crashes early if one is missing
-- [ ] `middlewares/validate.js`: `validate(schema)` for body, params and query
-- [ ] Global rate limit of 100 req/min per IP, plus an `aiLimiter` of 10 req/min per user (used from Step 6 on)
+- [x] `npm i helmet compression express-rate-limit zod`
+- [x] `src/config/env.js`: validate all env vars with zod at startup, so the server crashes early if one is missing (all files now use `env.X`, no `process.env` outside env.js)
+- [x] `middlewares/validate.js`: `validate(schema)` for body, params and query (first use: `modules/auth/auth.schema.js` → `POST /api/auth/google`)
+- [x] `middlewares/rateLimit.js`: global rate limit of 100 req/min per IP, plus an `aiLimiter` of 10 req/min per user (used from Step 6 on) — `globalLimiter` keyed by IP, `aiLimiter` keyed by `req.userId` (IP fallback); in-memory store until Step 22
+- [x] Wire `helmet` + `compression` + global limiter into `app.js` (order: trust proxy → helmet → cors → compression → /health → limiter → json → cookies → routes)
 
 **✅ Done when:** a bad request body returns 400 with a clear message, and the 101st request in a minute returns 429.
 

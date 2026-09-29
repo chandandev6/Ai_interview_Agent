@@ -1,8 +1,9 @@
-import 'dotenv/config';
+// sabse pehle env check — galat ho to yahi ruk jaayega, app load hi nahi hoga
+import { env } from './config/env.js';
 import app from './app.js';
 import connectDB, { disconnectDB } from './config/db.js';
 
-const PORT = process.env.PORT || 8000
+const PORT = env.PORT
 
 const startServer = async () => {
     try {

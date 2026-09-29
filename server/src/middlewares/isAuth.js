@@ -1,6 +1,7 @@
 //token se id nikal ke user ko authenticate karne ka middleware
 import jwt from "jsonwebtoken";
 import AppError from "../utils/AppError.js";
+import { env } from "../config/env.js";
 
 const isAuth = (req , res , next) =>{
     const {token} = req.cookies;
@@ -9,7 +10,7 @@ const isAuth = (req , res , next) =>{
     }
 
     try{
-        const verifyToken = jwt.verify(token , process.env.JWT_SECRET);
+        const verifyToken = jwt.verify(token , env.JWT_SECRET);
         req.userId = verifyToken.userId;
     }
     catch(error){

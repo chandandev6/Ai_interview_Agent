@@ -1,5 +1,7 @@
 // cookie options ek jagah — production me secure cookie + cross-site allowed
-const isProd = process.env.NODE_ENV === "production";
+import { env } from "./env.js";
+
+const isProd = env.NODE_ENV === "production";
 
 export const cookieOptions = {
     httpOnly: true,
