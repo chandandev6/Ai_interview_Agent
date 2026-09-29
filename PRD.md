@@ -17,8 +17,8 @@
 ### 0.1 Current focus
 | | |
 |---|---|
-| **Now** | Step 3: Client API layer + ProtectedRoute + lazy pages |
-| **Next** | Step 4: Dev tooling (prettier, ESLint, compress assets, README) |
+| **Now** | Step 2b: Email/password login — code done; you test in browser + set up Gmail SMTP, then commit |
+| **Next** | Step 3: Client API layer + ProtectedRoute + lazy pages |
 | **Milestone** | 🎯 MVP (end of Stage 4): target **2026-10-22** |
 | **Last updated** | 2026-09-30 |
 
@@ -40,6 +40,7 @@
 |---|------|------|------|--------|---------|------|-------|
 | 1 | Restructure server into feature modules | 🖥️ | 0.5d | ✅ | 2026-09-29 | 2026-09-29 | `server/src/` layout; API shape `{success,message,data}` |
 | 2 | Security & validation (helmet, zod, rate limit) | 🖥️ | 0.5d | ✅ | 2026-09-30 | 2026-09-30 | env.js, validate.js, rateLimit.js, app.js order + trust proxy |
+| 2b | Email/password login (bcrypt + email verification) | 🖥️🎨 | 1.5d | 🟡 | 2026-09-30 | | 5/5 code done ✅ · ⏳ waiting: your browser test + Gmail App Password |
 | 3 | Client API layer + ProtectedRoute + lazy pages | 🎨 | 0.5d | ⬜ | | | |
 | 4 | Dev tooling (git, prettier, compress assets, README) | 🎨🖥️ | 0.5d | ⬜ | | | |
 | 5 | Interview model + MODES + prompts | 🖥️ | 0.5d | ⬜ | | | |
@@ -70,6 +71,9 @@ Newest first. Format: `date · who · step · what changed`.
 
 | Date | Who | Step | What |
 |------|-----|------|------|
+| 2026-09-30 | Claude | 2b | Task 5 (frontend): `Auth.jsx` rebuilt (Login/Sign up tabs, show-password, inline errors, loading, resend on EMAIL_NOT_VERIFIED, check-inbox screen, Google kept), new `VerifyEmail.jsx` + `/verify-email` route, App.jsx 401 race fix. Lint + build pass. Not yet clicked through in a browser. |
+| 2026-09-30 | Claude | 2b | Tasks 2–4 (backend): `lib/mail/mailer.js` (SMTP or terminal fallback; SMTP required in production via env.js), `auth.emails.js`, schemas, service (register/verify/login/resend, sha256 link tokens, 24h expiry, dummy-hash timing guard, Google login wipes unverified password), `AppError` gets `code`, routes + `authLimiter` 10/15min. Verified 15 scenarios incl. takeover attempt and timing (316 vs 312 ms); test users deleted. |
+| 2026-09-30 | Claude | 2b | Task 1: installed `bcryptjs`, `nodemailer`; User model gets `password` (select:false), `isVerified`, `verificationToken(+Expires)`, lowercase/trim email. DB has 3 existing Google users without `isVerified` (handled in Task 3). |
 | 2026-09-30 | Claude | 2 | ✅ Step 2 done. Task 4: `app.js` wired — trust proxy (prod only) → helmet → cors → compression → /health → globalLimiter → json → cookies → routes. Verified: helmet headers + no `X-Powered-By`, gzip on >1 kB, bad body → 400, request 101 → 429 with CORS header, /health still 200 while limited. |
 | 2026-09-30 | Claude | 2 | Task 3: `middlewares/rateLimit.js` (`globalLimiter` 100/min per IP, `aiLimiter` 10/min per user, our `{success,message}` shape, `RateLimit` headers). Verified on a throwaway app: request 101 → 429; user A's 11th AI call → 429 while user B on the same IP → 200. Not wired into app.js yet. |
 | 2026-09-30 | Claude | 2 | Task 2: `middlewares/validate.js` + `modules/auth/auth.schema.js`; `POST /api/auth/google` validated. Verified: `{}`, no body, number, empty string → 400 with clear message; broken JSON → 400; extra fields stripped. |
@@ -90,6 +94,8 @@ Newest first. Format: `date · who · step · what changed`.
 | 2026-09-29 | Decision | Resume PDFs are parsed in memory; only the text is stored | ✅ Decided |
 | 2026-09-29 | Decision | No `asyncHandler` wrapper: Express 5 forwards rejected promises to the error middleware, so controllers just `throw new AppError(...)` | ✅ Decided |
 | 2026-09-29 | Action | Commit the foundation + Step 1 work | ✅ Done 2026-09-30 |
+| 2026-09-30 | Decision | Email/password login uses our own bcrypt + MongoDB (not Firebase email auth), with email verification required | ✅ Decided (learning bcrypt) |
+| 2026-09-30 | Action | Create a Gmail App Password and add `SMTP_*` vars to `server/.env` (needed for real emails; until then links print in the terminal) | ⬜ Owner: you (Step 2b Task 2) |
 | — | Open | Payment gateway: Razorpay (India) or Stripe? | ❓ Decide before Step 19 |
 | — | Open | Default AI model and cost per interview (credits pricing) | ❓ Decide before Step 7 |
 
@@ -386,6 +392,17 @@ Rules:
 - [x] Wire `helmet` + `compression` + global limiter into `app.js` (order: trust proxy → helmet → cors → compression → /health → limiter → json → cookies → routes)
 
 **✅ Done when:** a bad request body returns 400 with a clear message, and the 101st request in a minute returns 429.
+
+#### Step 2b 🖥️🎨 Email/password login ⏱️ 1.5 days  _(added 2026-09-30, not in the original plan)_
+Own passwords with bcrypt (not Firebase email auth) — chosen to learn hashing. Google login keeps working; same JWT cookie after login.
+- [x] `npm i bcryptjs nodemailer`; User model: `password` (select:false), `isVerified`, `verificationToken` (sha256 hash) + `verificationTokenExpires`, email lowercase
+- [x] `lib/mail/mailer.js`: nodemailer over SMTP (Gmail App Password); if SMTP not set, print the link in the terminal (dev)
+- [x] `auth.schema.js` + `auth.service.js`: register, verifyEmail, login, resendVerification; Google login sets `isVerified` and wipes an unverified password (pre-account-takeover fix)
+- [x] Controller + routes (`/register`, `/verify-email`, `/login`, `/resend-verification`) + strict `authLimiter` on login/register
+- [x] Frontend: new `Auth.jsx` (Login / Sign up tabs, show password, errors, loading, Google button) + `/verify-email` page (`pages/VerifyEmail.jsx`); App.jsx no longer dispatches null on 401 (race fix)
+- [ ] You: test the flow in the browser (see Done when) and set up Gmail SMTP
+
+**✅ Done when:** sign up → link (email or terminal) → click → logged in; wrong password → "Invalid email or password"; unverified login → "verify your email" + resend; Google login still works.
 
 #### Step 3 🎨 Client API layer + protected routes ⏱️ 0.5 day
 - [ ] `src/api/axios.js`: an axios instance with `baseURL: serverUrl`, `withCredentials: true`, and an interceptor that clears the user on 401

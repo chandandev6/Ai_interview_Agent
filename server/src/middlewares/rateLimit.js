@@ -13,6 +13,15 @@ export const globalLimiter = rateLimit({
     message: { success: false, message: "Too many requests, please try again in a minute" },
 });
 
+// login / register / resend par — password guess karne (brute force) aur email spam se bachav
+export const authLimiter = rateLimit({
+    windowMs: 15 * ONE_MINUTE,
+    limit: 10,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: { success: false, message: "Too many attempts. Please try again in 15 minutes." },
+});
+
 // sirf AI wale routes par, isAuth ke BAAD lagana — tab req.userId milta hai
 // key = userId, taaki ek hostel/college ki shared IP par sab block na ho
 export const aiLimiter = rateLimit({

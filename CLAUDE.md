@@ -25,8 +25,10 @@ I am a student. I am building this project to **learn**, not just to get working
 
 ## ✍️ Code conventions
 - Server is split into feature modules: `server/src/modules/<feature>/` → `*.routes.js`, `*.controller.js`, `*.service.js`, `*.model.js`. New feature = new module + one line in `app.js`.
+- Request validation: zod schemas in `modules/<feature>/<feature>.schema.js`, applied with `validate({ body, params, query })` in routes.
+- Config: import `env` from `config/env.js` — never read `process.env` elsewhere. New env var = add to env.js schema + `.env.example`.
 - Every API response: `{ success, message, data }` (use `sendSuccess` from `utils/response.js`).
-- Errors: `throw new AppError(status, message)` — no try/catch in controllers (Express 5 forwards async errors to `errorHandler`).
+- Errors: `throw new AppError(status, message, code?)` (`code` = stable name the frontend can check, e.g. `EMAIL_NOT_VERIFIED`) — no try/catch in controllers (Express 5 forwards async errors to `errorHandler`).
 - Client reads API data as `result.data.data.<thing>`.
 - Comments are short, in Hinglish, explaining **why** — match the existing style.
 - Never commit `.env` files; add new env vars to `.env.example` too.

@@ -3,6 +3,7 @@ import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import Interviewpage from "./pages/Interviewpage";
 import Interviewreport from "./pages/Interviewreport";
+import VerifyEmail from "./pages/VerifyEmail";
 import axios from "axios";
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
@@ -21,8 +22,9 @@ function App() {
         dispatch(setUserData(result.data.data.user));
       }
       catch (error) {
-        console.error("Error fetching user:", error);
-        dispatch(setUserData(null)); // Clear user data on error
+        // 401 = logged in nahi — userData pehle se null hai. Yaha null dispatch MAT karo:
+        // ye response late aaya to abhi-abhi login/verify hua user logout ho jaata (race condition)
+        if (error.response?.status !== 401) console.error("Error fetching user:", error);
       }
 
     }
@@ -33,6 +35,7 @@ function App() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/auth" element={<Auth />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/interview" element={<Interviewpage />} />
       <Route path="/report/:id" element={<Interviewreport />} />
       {/* TODO: /history, /pricing pages banana baaki hai (Navbar/Home se link hai) */}
