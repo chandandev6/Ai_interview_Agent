@@ -29,11 +29,14 @@ I am a student. I am building this project to **learn**, not just to get working
 - Config: import `env` from `config/env.js` — never read `process.env` elsewhere. New env var = add to env.js schema + `.env.example`.
 - Every API response: `{ success, message, data }` (use `sendSuccess` from `utils/response.js`).
 - Errors: `throw new AppError(status, message, code?)` (`code` = stable name the frontend can check, e.g. `EMAIL_NOT_VERIFIED`) — no try/catch in controllers (Express 5 forwards async errors to `errorHandler`).
-- Client reads API data as `result.data.data.<thing>`.
+- Client: never call axios in components — add a function in `client/src/api/<feature>.api.js` (uses the shared `api` instance from `api/axios.js`). API functions return the server body, so components read `const res = await loginUser(...)` → `res.data.user`, `res.message`. Errors → `getErrorMessage(error)` from `utils/`.
+- Client: private pages go inside `<ProtectedRoute>` in `App.jsx`; new pages are `lazy()` imports.
 - Comments are short, in Hinglish, explaining **why** — match the existing style.
 - Never commit `.env` files; add new env vars to `.env.example` too.
 - Commit only when I ask.
 
 ## ✅ Checks before saying "done"
-- `cd client && npm run lint && npm run build`
+- From the root: `npm run check` (Prettier check + ESLint client & server + client build)
 - Server starts (`cd server && npm run dev`) and `/health` returns ok
+- Formatting: Prettier (root `.prettierrc.json`: 4 spaces, 120 cols). Run `npm run format` on files you change.
+- UI checks: headless `google-chrome` + a CDP script works; the user usually has dev servers running on 8000/5173. `server/.env` has real Gmail SMTP — set `SMTP_HOST=` empty for test processes so no real mail is sent.

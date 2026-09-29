@@ -7,11 +7,11 @@ const isConfigured = Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);
 // transporter = SMTP server se connection (Gmail ka "post office")
 const transporter = isConfigured
     ? nodemailer.createTransport({
-        host: env.SMTP_HOST,
-        port: env.SMTP_PORT,
-        secure: env.SMTP_PORT === 465, // 465 = shuru se encrypted, 587 = pehle plain phir STARTTLS se encrypted
-        auth: { user: env.SMTP_USER, pass: env.SMTP_PASS },
-    })
+          host: env.SMTP_HOST,
+          port: env.SMTP_PORT,
+          secure: env.SMTP_PORT === 465, // 465 = shuru se encrypted, 587 = pehle plain phir STARTTLS se encrypted
+          auth: { user: env.SMTP_USER, pass: env.SMTP_PASS },
+      })
     : null;
 
 if (!isConfigured) {

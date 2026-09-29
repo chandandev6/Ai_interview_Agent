@@ -9,7 +9,7 @@ export const globalLimiter = rateLimit({
     windowMs: ONE_MINUTE,
     limit: 100,
     standardHeaders: "draft-8", // client ko RateLimit header bhejo (kitni bachi, kab reset)
-    legacyHeaders: false,       // purane X-RateLimit-* headers nahi chahiye
+    legacyHeaders: false, // purane X-RateLimit-* headers nahi chahiye
     message: { success: false, message: "Too many requests, please try again in a minute" },
 });
 

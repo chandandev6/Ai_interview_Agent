@@ -17,8 +17,8 @@
 ### 0.1 Current focus
 | | |
 |---|---|
-| **Now** | Step 2b: Email/password + forgot password — code done, SMTP working; you test in browser, then commit |
-| **Next** | Step 3: Client API layer + ProtectedRoute + lazy pages |
+| **Now** | Step 4: Dev tooling — setup done; you: commit Step 3 → `npm run format` → commit |
+| **Next** | Stage 2 → Step 5: Interview model + MODES + prompts |
 | **Milestone** | 🎯 MVP (end of Stage 4): target **2026-10-22** |
 | **Last updated** | 2026-09-30 |
 
@@ -26,23 +26,23 @@
 | Stage | Steps | Done | Progress | Target date | Status |
 |-------|-------|------|----------|-------------|--------|
 | 0. Foundation | — | ✅ | `██████████` 100% | 2026-09-29 | ✅ |
-| 1. Setup for growth | 1–4 | 2/4 | `█████░░░░░` 50% | 2026-10-02 | 🟡 |
+| 1. Setup for growth | 1–4 (+2b) | 4/5 | `████████░░` 80% | 2026-10-02 | 🟡 |
 | 2. Interview backend | 5–9 | 0/5 | `░░░░░░░░░░` 0% | 2026-10-09 | ⬜ |
 | 3. Interview frontend | 10–14 | 0/5 | `░░░░░░░░░░` 0% | 2026-10-17 | ⬜ |
 | 4. History & reports 🎯 MVP | 15–17 | 0/3 | `░░░░░░░░░░` 0% | 2026-10-22 | ⬜ |
 | 5. Payments | 18–20 | 0/3 | `░░░░░░░░░░` 0% | 2026-10-28 | ⬜ |
 | 6. Production & scale | 21–26 | 0/6 | `░░░░░░░░░░` 0% | 2026-11-06 | ⬜ |
 | 7. Differentiators | 27–33 | 0/7 | `░░░░░░░░░░` 0% | after launch | ⬜ |
-| **Total (Steps 1–26)** | | **2/26** | `█░░░░░░░░░` 8% | | |
+| **Total (Steps 1–26 + 2b)** | | **4/27** | `█░░░░░░░░░` 15% | | |
 
 ### 0.3 Step board
 | # | Step | Area | Est. | Status | Started | Done | Notes |
 |---|------|------|------|--------|---------|------|-------|
 | 1 | Restructure server into feature modules | 🖥️ | 0.5d | ✅ | 2026-09-29 | 2026-09-29 | `server/src/` layout; API shape `{success,message,data}` |
 | 2 | Security & validation (helmet, zod, rate limit) | 🖥️ | 0.5d | ✅ | 2026-09-30 | 2026-09-30 | env.js, validate.js, rateLimit.js, app.js order + trust proxy |
-| 2b | Email/password login (bcrypt + email verification + forgot password) | 🖥️🎨 | 2d | 🟡 | 2026-09-30 | | Code done ✅ (incl. forgot password) · Gmail SMTP ✅ · ⏳ your browser test + commit |
-| 3 | Client API layer + ProtectedRoute + lazy pages | 🎨 | 0.5d | ⬜ | | | |
-| 4 | Dev tooling (git, prettier, compress assets, README) | 🎨🖥️ | 0.5d | ⬜ | | | |
+| 2b | Email/password login (bcrypt + email verification + forgot password) | 🖥️🎨 | 2d | ✅ | 2026-09-30 | 2026-09-30 | Committed `742ea00` (incl. forgot password, Gmail SMTP) |
+| 3 | Client API layer + ProtectedRoute + lazy pages | 🎨 | 0.5d | ✅ | 2026-09-30 | 2026-09-30 | `src/api/`, interceptor, `loading`, ProtectedRoute, lazy pages; 10/10 headless-Chrome checks |
+| 4 | Dev tooling (git, prettier, compress assets, README) | 🎨🖥️ | 0.5d | 🟡 | 2026-09-30 | | Setup done ✅ · ⏳ you: commit Step 3, then run `npm run format` + commit |
 | 5 | Interview model + MODES + prompts | 🖥️ | 0.5d | ⬜ | | | |
 | 6 | Resume upload & parsing | 🖥️ | 1d | ⬜ | | | |
 | 7 | Start interview (atomic credits + questions) | 🖥️ | 1d | ⬜ | | | |
@@ -71,6 +71,9 @@ Newest first. Format: `date · who · step · what changed`.
 
 | Date | Who | Step | What |
 |------|-----|------|------|
+| 2026-09-30 | Claude | 4 | Root Prettier + scripts, server ESLint (3 fixes), WebP images (−88%), README. Verified: lint clean both apps, client build, all 8 WebP load in Chrome, Prettier dry run on a copy keeps lint/build/server working. Format run left to user so Step 3 commit stays readable. |
+| 2026-09-30 | Claude | 3 | ✅ Step 3: `api/axios.js` (instance + 401 interceptor, ignores `/api/auth/*` and current-user), `auth.api.js`, `user.api.js`, `utils/getErrorMessage.js`; `userSlice.loading` + `finishLoading`; `ProtectedRoute` + `PageLoader`; lazy pages + lazy login popup; Navbar placeholders while loading; login returns to `from` page. Headless Chrome: redirect when logged out, back to /interview after login, survives refresh, no "0 credits" flash, logout works, no console errors. Interceptor's session-expired path not exercised yet (no protected API besides current-user). Not committed. |
+| 2026-09-30 | You | 2b | ✅ Step 2b committed (`a7d62e8`, `742ea00`). |
 | 2026-09-30 | Claude | 2b | Forgot password: model `passwordResetToken/Expires`, schemas, `requestPasswordReset` (background send → no slow-response leak) + `resetPassword`, 2 routes, `passwordResetEmail`, Auth.jsx "forgot" screen, `ResetPassword.jsx` + route. Verified 13 scenarios (unknown/known email same reply, bad/expired/reused link, short password, old pw rejected, Google-only user adds a password, unverified → verified). Found Gmail SMTP already configured; test sent 2 mails to @example.com (may bounce). Test users deleted. |
 | 2026-09-30 | Claude | 2b | Task 5 (frontend): `Auth.jsx` rebuilt (Login/Sign up tabs, show-password, inline errors, loading, resend on EMAIL_NOT_VERIFIED, check-inbox screen, Google kept), new `VerifyEmail.jsx` + `/verify-email` route, App.jsx 401 race fix. Lint + build pass. Not yet clicked through in a browser. |
 | 2026-09-30 | Claude | 2b | Tasks 2–4 (backend): `lib/mail/mailer.js` (SMTP or terminal fallback; SMTP required in production via env.js), `auth.emails.js`, schemas, service (register/verify/login/resend, sha256 link tokens, 24h expiry, dummy-hash timing guard, Google login wipes unverified password), `AppError` gets `code`, routes + `authLimiter` 10/15min. Verified 15 scenarios incl. takeover attempt and timing (316 vs 312 ms); test users deleted. |
@@ -404,24 +407,25 @@ Own passwords with bcrypt (not Firebase email auth) — chosen to learn hashing.
 - [x] Frontend: new `Auth.jsx` (Login / Sign up tabs, show password, errors, loading, Google button) + `/verify-email` page (`pages/VerifyEmail.jsx`); App.jsx no longer dispatches null on 401 (race fix)
 - [x] Forgot password: `POST /forgot-password` (same response for any email, email sent in background) + `POST /reset-password` (1h link, one-time, sets `isVerified`, logs in); "Forgot password?" screen in `Auth.jsx` + `pages/ResetPassword.jsx`. Google-only users can use it to add a password.
 - [x] You: Gmail SMTP in `server/.env` (confirmed working 2026-09-30)
-- [ ] You: test the flow in the browser (see Done when), then commit
+- [x] You: tested in the browser and committed (`a7d62e8`, `742ea00`)
 
 **✅ Done when:** sign up → link (email or terminal) → click → logged in; wrong password → "Invalid email or password"; unverified login → "verify your email" + resend; forgot password → email → new password → logged in, old password rejected; Google login still works.
 
 #### Step 3 🎨 Client API layer + protected routes ⏱️ 0.5 day
-- [ ] `src/api/axios.js`: an axios instance with `baseURL: serverUrl`, `withCredentials: true`, and an interceptor that clears the user on 401
-- [ ] `src/api/auth.api.js`, `user.api.js`: move the calls out of the components
-- [ ] Add `loading` to `userSlice` so the app doesn't flash "logged out" while fetching the current user
-- [ ] `components/ProtectedRoute.jsx`: wrap `/interview`, `/history`, `/report/:id`
-- [ ] Lazy-load pages with `React.lazy` + `Suspense` (fixes the 540 kB bundle warning)
+- [x] `src/api/axios.js`: an axios instance with `baseURL: serverUrl`, `withCredentials: true`, and an interceptor that clears the user on 401
+- [x] `src/api/auth.api.js`, `user.api.js`: move the calls out of the components (+ `utils/getErrorMessage.js`)
+- [x] Add `loading` to `userSlice` so the app doesn't flash "logged out" while fetching the current user
+- [x] `components/ProtectedRoute.jsx`: wrap `/interview`, `/report/:id` (`/history` when the page exists); login sends you back to the page you came from
+- [x] Lazy-load pages with `React.lazy` + `Suspense` (fixes the 540 kB bundle warning) — main 540 → 445 kB, login popup + Firebase (107 kB) load only when opened
 
 **✅ Done when:** opening `/interview` while logged out shows the login modal or redirects, and after refresh a logged-in user stays on the page.
 
 #### Step 4 🎨🖥️ Dev tooling ⏱️ 0.5 day
-- [ ] `git init` at `Ai_interview_Agent/` (if not already a repo) and first commit; confirm `.env` is **not** committed
-- [ ] Prettier config shared by client and server; ESLint for the server
-- [ ] Compress images in `client/src/assets` (use WebP, target < 60 kB each) and videos (target < 2 MB each)
-- [ ] Root `README.md` with the run instructions (copy §12)
+- [x] `git init` at `Ai_interview_Agent/` (if not already a repo) and first commit; confirm `.env` is **not** committed (repo existed; `.env` is gitignored)
+- [x] Prettier config shared by client and server; ESLint for the server — root `package.json` (`format`, `format:check`, `lint`, `check`), `.prettierrc.json` (4 spaces, 120 cols, JSON 2 spaces), `.prettierignore` (md, lockfiles, dist); `server/eslint.config.js` (fixed 3 unused-var errors)
+- [ ] You: run `npm run format` once (after committing Step 3) — dry run on a copy: 43 files, lint/build/server boot all fine
+- [x] Compress images in `client/src/assets` (use WebP, target < 60 kB each) and videos (target < 2 MB each) — 8 PNGs 1283 kB → 157 kB WebP (11–28 kB each, PSNR 40–45 dB); videos already 1.1/1.3 MB; `MM.png` unused, left as is
+- [x] Root `README.md` with the run instructions (copy §12) — plus features, stack, structure, env tables, scripts, API list
 
 **✅ Done when:** `npm run lint` passes in both apps and the repo is committed.
 

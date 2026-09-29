@@ -5,4 +5,4 @@ import { sendSuccess } from "../../utils/response.js";
 export const getCurrentUser = async (req, res) => {
     const user = await getUserById(req.userId);
     return sendSuccess(res, { data: { user } });
-}
+};

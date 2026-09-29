@@ -1,8 +1,5 @@
-
 function Interviewreport() {
-  return (
-    <div>Interviewreport</div>
-  )
+    return <div>Interviewreport</div>;
 }
 
-export default Interviewreport
+export default Interviewreport;

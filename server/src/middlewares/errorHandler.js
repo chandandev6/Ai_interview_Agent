@@ -3,9 +3,10 @@ import AppError from "../utils/AppError.js";
 // Express 5 async errors khud yaha bhej deta hai — controllers me try/catch ki zarurat nahi
 export const notFound = (req, res) => {
     res.status(404).json({ success: false, message: `Route not found: ${req.method} ${req.originalUrl}` });
-}
+};
 
-export const errorHandler = (err, req, res, next) => {
+// 4 params zaruri hai — Express isi se pehchanta hai ki ye error handler hai (_next use nahi hota)
+export const errorHandler = (err, req, res, _next) => {
     const isAppError = err instanceof AppError;
     const status = err.status || (err.name === "MulterError" ? 400 : 500);
     if (status >= 500) {
@@ -17,4 +18,4 @@ export const errorHandler = (err, req, res, next) => {
         message: isAppError || status < 500 ? err.message : "Internal server error",
         ...(isAppError && err.code && { code: err.code }),
     });
-}
+};

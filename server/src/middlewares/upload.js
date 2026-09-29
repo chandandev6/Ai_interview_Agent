@@ -2,11 +2,12 @@ import multer from "multer";
 
 // resume ko memory me rakho — parse karke text DB me save karenge, disk pe file nahi chahiye
 // (multiple servers pe local disk share nahi hoti)
-const storage = multer.memoryStorage()
+const storage = multer.memoryStorage();
 
-const upload = multer({ storage ,
+const upload = multer({
+    storage,
     limits: {
-        fileSize: 1024 * 1024 * 5 // 5MB limit
+        fileSize: 1024 * 1024 * 5, // 5MB limit
     },
     fileFilter: function (req, file, cb) {
         if (file.mimetype !== "application/pdf") {
@@ -14,8 +15,8 @@ const upload = multer({ storage ,
             error.status = 400;
             return cb(error);
         }
-        cb(null, true)
+        cb(null, true);
     },
- });
+});
 
 export default upload;

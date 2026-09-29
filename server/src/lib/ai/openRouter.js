@@ -19,7 +19,7 @@ export const askAi = async (messages, { json = false } = {}) => {
                     "Content-Type": "application/json",
                 },
                 timeout: 60000,
-            }
+            },
         );
 
         const content = response.data?.choices?.[0]?.message?.content;
@@ -27,9 +27,8 @@ export const askAi = async (messages, { json = false } = {}) => {
             throw new Error("Empty response from AI");
         }
         return json ? JSON.parse(content) : content;
-    }
-    catch (error) {
+    } catch (error) {
         console.error("Error in askAi:", error.response?.data || error.message);
         throw error;
     }
-}
+};

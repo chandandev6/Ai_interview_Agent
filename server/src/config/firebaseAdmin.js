@@ -3,8 +3,6 @@ import { initializeApp, getApps } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { env } from "./env.js";
 
-const app = getApps().length
-    ? getApps()[0]
-    : initializeApp({ projectId: env.FIREBASE_PROJECT_ID });
+const app = getApps().length ? getApps()[0] : initializeApp({ projectId: env.FIREBASE_PROJECT_ID });
 
 export const firebaseAuth = getAuth(app);

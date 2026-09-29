@@ -1,0 +1,14 @@
+{
+  "name": "ai-interview-agent",
+  "private": true,
+  "description": "Root scripts shared by client/ and server/ (formatting + lint)",
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "npm run lint --prefix client && npm run lint --prefix server",
+    "check": "npm run format:check && npm run lint && npm run build --prefix client"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.9"
+  }
+}

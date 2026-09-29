@@ -13,14 +13,19 @@ const linkToken = text("Token").regex(/^[a-f0-9]{64}$/, "Invalid or broken link"
 
 // register aur reset dono me same password rules
 // bcrypt sirf pehle 72 bytes dekhta hai — usse lamba password chup-chaap kat jaata, isliye max 72
-const newPassword = text("Password").min(8, "Password must be at least 8 characters").max(72, "Password must be at most 72 characters");
+const newPassword = text("Password")
+    .min(8, "Password must be at least 8 characters")
+    .max(72, "Password must be at most 72 characters");
 
 export const googleSchema = z.object({
     idToken: text("idToken").min(1, "idToken is required"),
 });
 
 export const registerSchema = z.object({
-    name: text("Name").trim().min(2, "Name must be at least 2 characters").max(50, "Name must be at most 50 characters"),
+    name: text("Name")
+        .trim()
+        .min(2, "Name must be at least 2 characters")
+        .max(50, "Name must be at most 50 characters"),
     email,
     password: newPassword,
 });
