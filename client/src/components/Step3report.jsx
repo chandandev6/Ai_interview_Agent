@@ -2,10 +2,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
-import { BsCheckCircle, BsExclamationCircle, BsLightbulb, BsChevronDown } from "react-icons/bs";
-import { CRITERIA } from "../constants/interview.js";
-
-const MODE_LABEL = { hr: "HR", technical: "Technical", confidence: "Confidence" };
+import toast from "react-hot-toast";
+import { BsCheckCircle, BsExclamationCircle, BsLightbulb, BsChevronDown, BsDownload } from "react-icons/bs";
+import { CRITERIA, MODE_LABEL } from "../constants/interview.js";
+import { downloadReportPdf } from "../utils/reportPdf.js";
 
 // score ke hisaab se rang — ek hi jagah taaki ring, bars, badges sab match karein
 const scoreColor = (outOf10) => (outOf10 >= 7 ? "#16a34a" : outOf10 >= 4 ? "#d97706" : "#dc2626");
@@ -109,6 +109,19 @@ function QuestionItem({ item, index }) {
 function Step3report({ interview }) {
     const navigate = useNavigate();
     const { report } = interview;
+    const [downloading, setDownloading] = useState(false);
+
+    const handleDownload = async () => {
+        setDownloading(true);
+        try {
+            await downloadReportPdf(interview);
+        } catch (error) {
+            console.error("PDF failed:", error);
+            toast.error("Could not create the PDF. Please try again.");
+        } finally {
+            setDownloading(false);
+        }
+    };
 
     return (
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-6">
@@ -182,6 +195,14 @@ function Step3report({ interview }) {
             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
                 <button
                     type="button"
+                    onClick={handleDownload}
+                    disabled={downloading}
+                    className="bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                    <BsDownload /> {downloading ? "Creating PDF…" : "Download PDF"}
+                </button>
+                <button
+                    type="button"
                     onClick={() => navigate("/interview")}
                     className="bg-black text-white px-6 py-3 rounded-xl hover:bg-gray-800"
                 >
@@ -189,10 +210,10 @@ function Step3report({ interview }) {
                 </button>
                 <button
                     type="button"
-                    onClick={() => navigate("/")}
-                    className="border border-gray-300 px-6 py-3 rounded-xl hover:bg-gray-100"
+                    onClick={() => navigate("/history")}
+                    className="border border-gray-300 bg-white px-6 py-3 rounded-xl hover:bg-gray-100"
                 >
-                    Back to home
+                    View history
                 </button>
             </div>
         </div>

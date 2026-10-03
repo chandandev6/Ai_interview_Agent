@@ -21,5 +21,6 @@ export const finishInterview = (interviewId) => api.post(`/api/interview/${inter
 
 export const getInterview = (interviewId) => api.get(`/api/interview/${interviewId}`).then(body);
 
-export const getHistory = ({ page = 1, limit = 10 } = {}) =>
-    api.get("/api/interview/history", { params: { page, limit } }).then(body);
+// mode na ho (undefined) to axios use URL me bhejta hi nahi → saare modes
+export const getHistory = ({ page = 1, limit = 10, mode } = {}) =>
+    api.get("/api/interview/history", { params: { page, limit, mode } }).then(body);

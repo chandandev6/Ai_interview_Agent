@@ -40,4 +40,6 @@ export const historyQuerySchema = z.object({
     page: z.coerce.number().int().min(1, "page must be 1 or more").default(1),
     // max 50 — koi limit=100000 bhej ke poora DB ek request me na maang le
     limit: z.coerce.number().int().min(1).max(50, "limit must be at most 50").default(10),
+    // optional filter (History page ke tabs) — na ho to saare modes
+    mode: z.enum(MODE_KEYS, { error: `mode must be one of: ${MODE_KEYS.join(", ")}` }).optional(),
 });

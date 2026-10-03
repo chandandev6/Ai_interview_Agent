@@ -52,3 +52,6 @@ export const CRITERIA = [
     { key: "technical", label: "Technical" },
     { key: "confidence", label: "Confidence" },
 ];
+
+// "technical" → "Technical" (report, history, PDF sab jagah same naam)
+export const MODE_LABEL = Object.fromEntries(MODES.map((mode) => [mode.key, mode.title]));

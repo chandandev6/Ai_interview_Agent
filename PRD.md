@@ -17,8 +17,8 @@
 ### 0.1 Current focus
 | | |
 |---|---|
-| **Now** | Step 15: History page |
-| **Next** | Step 16: Analytics (charts + stats API) |
+| **Now** | Step 16: Analytics (charts + stats API) |
+| **Next** | Step 18: Transaction ledger (Stage 5) |
 | **Milestone** | 🎯 MVP (end of Stage 4): target **2026-10-22** |
 | **Last updated** | 2026-10-04 |
 
@@ -29,11 +29,11 @@
 | 1. Setup for growth | 1–4 (+2b) | 5/5 | `██████████` 100% | 2026-10-02 | ✅ |
 | 2. Interview backend | 5–9 | 5/5 | `██████████` 100% | 2026-10-09 | ✅ |
 | 3. Interview frontend | 10–14 | 5/5 | `██████████` 100% | 2026-10-17 | ✅ |
-| 4. History & reports 🎯 MVP | 15–17 | 0/3 | `░░░░░░░░░░` 0% | 2026-10-22 | ⬜ |
+| 4. History & reports 🎯 MVP | 15–17 | 2/3 | `███████░░░` 67% | 2026-10-22 | 🟡 |
 | 5. Payments | 18–20 | 0/3 | `░░░░░░░░░░` 0% | 2026-10-28 | ⬜ |
 | 6. Production & scale | 21–26 | 0/6 | `░░░░░░░░░░` 0% | 2026-11-06 | ⬜ |
 | 7. Differentiators | 27–33 | 0/7 | `░░░░░░░░░░` 0% | after launch | ⬜ |
-| **Total (Steps 1–26 + 2b)** | | **15/27** | `██████░░░░` 56% | | |
+| **Total (Steps 1–26 + 2b)** | | **17/27** | `██████░░░░` 63% | | |
 
 ### 0.3 Step board
 | # | Step | Area | Est. | Status | Started | Done | Notes |
@@ -52,10 +52,10 @@
 | 11 | Step 1: Setup screen | 🎨 | 1d | ✅ | 2026-10-04 | 2026-10-04 | role suggestions, experience, mode cards, resume drop zone + chips, avatar, idempotent Start |
 | 12 | Step 2: Live interview (voice, avatar, timer) | 🎨 | 2–3d | ✅ | 2026-10-04 | 2026-10-04 | TTS + STT + countdown hooks, `QuestionRound`, resume after refresh. Real-mic test pending (you) |
 | 13 | Step 3: Report screen | 🎨 | 1d | ✅ | 2026-10-04 | 2026-10-04 | `/report/:id` page; PDF button → Step 17, History button → Step 15 |
-| 14 | End-to-end polish | 🎨🖥️ | 1d | ✅ | 2026-10-04 | 2026-10-04 | react-hot-toast, skeleton, retry buttons, low-credit banner, mobile Navbar fix. Not committed |
-| 15 | History page | 🎨 | 1d | ⬜ | | | |
+| 14 | End-to-end polish | 🎨🖥️ | 1d | ✅ | 2026-10-04 | 2026-10-04 | react-hot-toast, skeleton, retry buttons, low-credit banner, mobile Navbar fix. Committed `584e6d4` |
+| 15 | History page | 🎨 | 1d | ✅ | 2026-10-04 | 2026-10-04 | cards, mode tabs (server `?mode=`), Load more, Continue for in-progress, empty/skeleton/error. Not committed |
 | 16 | Analytics (charts + stats API) | 🎨🖥️ | 1d | ⬜ | | | |
-| 17 | Report page + PDF download | 🎨 | 1d | ⬜ | | | 🎯 MVP → deploy beta |
+| 17 | Report page + PDF download | 🎨 | 1d | ✅ | 2026-10-04 | 2026-10-04 | `utils/reportPdf.js` (jspdf + autotable, lazy-loaded, Latin-1 text cleanup). Step 16 still open before MVP. Not committed |
 | 18 | Transaction ledger | 🖥️ | 0.5d | ⬜ | | | |
 | 19 | Pricing + payment gateway + webhook | 🖥️🎨 | 2d | ⬜ | | | |
 | 20 | Account page | 🎨 | 0.5d | ⬜ | | | |
@@ -71,6 +71,8 @@ Newest first. Format: `date · who · step · what changed`.
 
 | Date | Who | Step | What |
 |------|-----|------|------|
+| 2026-10-04 | Claude | 15, 17 | ✅ History page + PDF (Step 16 analytics not done yet). **Backend:** `historyQuerySchema` gets optional `mode` (enum → 400 otherwise), `getHistory` filters by it. **Client:** `pages/History.jsx` + protected lazy `/history` route: 9 cards per page (role, mode, experience, date, colour score or status badge), All/Technical/HR/Confidence tabs, Load more (appends next page), Continue on an in-progress card (saves it as the active interview → /interview resumes it), skeleton, empty state, error + Try again. `MODE_LABEL` moved to constants. `npm i jspdf jspdf-autotable`; `utils/reportPdf.js` (dynamic import → separate chunks, nothing extra on page load): header with role (cut to 1 line) + coloured score, skill table, strengths/weaknesses/improvements, one table per question, page numbers, local-date filename; AI text cleaned to Latin-1 (‑ ’ “ … → - ' " ...) because jsPDF fonts can't draw them. Report gets Download PDF + View history buttons. **Verified:** API all/hr/technical page 2/bad mode; headless Chrome: 12 interviews (starting hidden), 9 cards → Load more → 12, HR tab → 5 all HR, report → PDF downloaded (2 pages, clean text, checked with pdftotext + rendered image), View history works, Continue → "question 1 of 5" resume screen, mobile no overflow, empty user → empty state, no console errors. Test data deleted. `npm run check` passes. Not committed. |
+| 2026-10-04 | You | 10–14 | ✅ Committed Steps 10–14 (`584e6d4`). |
 | 2026-10-04 | Claude | 10–14 | ✅ Stage 3 interview frontend (user asked to do it all in one go, no backend change needed). **API/state:** `api/interview.api.js` (6 endpoints), `redux/interviewSlice.js` (setup → in_progress; `interviewRestored` from GET /:id = first unscored question; `resumed` gate), `userSlice.setCredit`, `utils/activeInterview.js` (sessionStorage id → refresh resumes, credits not wasted), `constants/interview.js`. **Setup (Step1setup):** role + datalist, experience enum, mode cards with cost, PDF drop zone (type/5 MB check → chips), avatar videos (`#t=0.5` preview), Start keeps the same `requestId` on network failure / INTERVIEW_STARTING and makes a new one after a server answer; low-credit banner. **Live (Step2interview + interview/QuestionRound keyed by index):** hooks `useSpeechSynthesis` (voice by avatar, safety timeout), `useSpeechRecognition` (en-IN, continuous, interim, auto-restart, fatal errors → type; `stop()` waits for last chunk), `useCountdown` (Date.now based, auto-submit at 0). Avatar video plays while speaking; Repeat/Skip/Submit; ALREADY_ANSWERED → reads saved score; 503 → keep text + retry; beforeunload warning; finish auto-retries on 409 evaluating/finishing, else Try again button; StrictMode-safe (one finish request per attempt). **Report:** `/report/:id` (state passed from finish, else GET; skeleton; not found / not finished states), `Step3report` (animated ring, 4 bars, strengths/weaknesses/improvements, per-question accordion). Toaster in App.jsx, Navbar mobile padding/truncate. `npm i react-hot-toast`. **Verified in headless Chrome (test servers 8100/5174):** setup → Start (credits 100→50 in Navbar) → Q1–Q5 typed (Q3 skipped) → reload mid-interview → "Welcome back, question 3 of 5" → Continue → finish → /report/:id, sessionStorage cleared, report survives reload, unknown id → not found, no console errors, no horizontal overflow at 390 px. AI gave 0 because my scripted answers didn't match its new questions (correct anti-off-topic behaviour). **Not tested:** real microphone / real voices (headless has none), 503 retry UI, low-credit banner in browser. Test data deleted. `npm run check` passes. Not committed. |
 | 2026-10-04 | You | 8, 9 | ✅ Committed Steps 8 + 9 (`062562d`, `3d31f3b`). |
 | 2026-10-04 | Claude | 9 | ✅ Step 9: new status `finishing`. `POST /:id/finish` (isAuth → aiLimiter → validate params): atomic claim `in_progress → finishing` only if no answer is claimed-but-unscored (`$not $elemMatch {answer string, scores missing}`); failed claim → 404 / completed → same report (200) / 409 `INTERVIEW_FINISHING` / 409 `ANSWER_BEING_EVALUATED` / 409 `INTERVIEW_NOT_ACTIVE`. `calculateScores`: per-criterion averages (unanswered = 0, 1 decimal) + weighted overall ×10 with mode weights. Zero answers → fixed text, no AI; else `askAiJson(reportPrompt)`. Any fail → back to `in_progress` (503). `GET /:id` owner-only (hides userId/requestId). `GET /history?page&limit` (limit ≤50): excludes `starting`, `.lean()`, light projection, sort createdAt desc, `Promise.all` with count. Route `/history` before `/:id`. `docs/api.postman.json` (login → resume → start (saves interviewId) → 5 answers → finish → get → history). Verified: 401/400; other user 404 (finish + get); `starting` → 409; pending answer → 409; zero answers → fixed report; finish again → same report; AI down → 503 + back to in_progress; full flow overall 43 = hand calc (4.4/4.0/4.4/4.4, technical weights); 2 parallel finish → 200 + 409; answer after complete → 409; history order/paging/no questions/limit=100, page=0, page=abc → 400; other user empty list. aiLimiter 429 seen during testing (expected). Test data deleted. `npm run check` passes. Not committed. |
@@ -523,7 +525,7 @@ Own passwords with bcrypt (not Firebase email auth) — chosen to learn hashing.
 #### Step 13 🎨 Step 3: Report screen ⏱️ 1 day
 - [x] Overall score ring, 4 skill bars, strengths/weaknesses/improvements lists
 - [x] Per-question accordion: question, your answer, score, feedback
-- [ ] Buttons: "Download PDF" (Step 17), "New Interview" ✅, "View History" (Step 15)
+- [x] Buttons: "Download PDF", "New Interview", "View History"
 
 #### Step 14 🎨🖥️ End-to-end polish ⏱️ 1 day
 - [x] Loading skeletons, error toasts (`react-hot-toast`), empty states
@@ -537,16 +539,16 @@ Own passwords with bcrypt (not Firebase email auth) — chosen to learn hashing.
 ### Stage 4 — History & reports 🎯 MVP
 
 #### Step 15 🎨 History page (`/history`) ⏱️ 1 day
-- [ ] Paginated list of cards (role, mode, date, score, status) linking to `/report/:id`
-- [ ] Filter by mode and a "Load more" button
+- [x] Paginated list of cards (role, mode, date, score, status) linking to `/report/:id`
+- [x] Filter by mode and a "Load more" button
 
 #### Step 16 🎨 Analytics ⏱️ 1 day
 - [ ] `npm i recharts`: a line chart of the overall score over time and average skill scores
 - [ ] Server endpoint `GET /api/interview/stats` using a MongoDB aggregation (average by mode, trend)
 
 #### Step 17 🎨 Report page + PDF download ⏱️ 1 day
-- [ ] `/report/:id`: reuse the Step 3 report component (`Interviewreport.jsx`)
-- [ ] PDF via `jspdf` + `jspdf-autotable` on the client (no server load)
+- [x] `/report/:id`: reuse the Step 3 report component (`Interviewreport.jsx`)
+- [x] PDF via `jspdf` + `jspdf-autotable` on the client (no server load)
 
 **✅ Done when (🎯 MVP):** a new user can sign up, take 2 interviews, see history and trend, and download a PDF. **Deploy a beta (Step 25) now** and collect feedback.
 

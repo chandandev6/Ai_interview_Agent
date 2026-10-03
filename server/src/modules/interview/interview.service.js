@@ -328,9 +328,10 @@ export const getInterview = async (userId, interviewId) => {
 const HISTORY_FIELDS = "role experience mode status creditsUsed report.overallScore createdAt completedAt";
 
 // history, newest first, page by page. Index { userId, createdAt: -1 } se filter + sort dono fast
-export const getHistory = async (userId, { page, limit }) => {
+export const getHistory = async (userId, { page, limit, mode }) => {
     // "starting" = Step 7 ka reserve, asli interview nahi
     const filter = { userId, status: { $ne: "starting" } };
+    if (mode) filter.mode = mode;
 
     // dono query ek saath chalao (ek ke baad ek nahi) — .lean() = plain object, sirf padhna hai to tez + kam memory
     const [items, total] = await Promise.all([
