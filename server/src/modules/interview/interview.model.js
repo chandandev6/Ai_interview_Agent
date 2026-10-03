@@ -47,11 +47,13 @@ const reportSchema = new mongoose.Schema(
 const interviewSchema = new mongoose.Schema(
     {
         userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+        // frontend har "Start" attempt ka ek random UUID bhejta hai — double-click par dono request me same aata hai
+        requestId: { type: String, required: true },
         role: { type: String, required: true, trim: true },
         experience: { type: String, required: true },
         mode: { type: String, enum: MODE_KEYS, required: true },
         resume: { type: resumeSchema, default: undefined }, // optional
-        status: { type: String, enum: INTERVIEW_STATUS, default: "in_progress" },
+        status: { type: String, enum: INTERVIEW_STATUS, default: "starting" },
         questions: [questionSchema],
         report: { type: reportSchema, default: undefined }, // finish ke baad bharta hai
         creditsUsed: { type: Number, required: true },
@@ -62,6 +64,10 @@ const interviewSchema = new mongoose.Schema(
 
 // "meri history, newest first" — userId se filter + createdAt se sort, dono index se (lakhon interviews me bhi fast)
 interviewSchema.index({ userId: 1, createdAt: -1 });
+
+// idempotency: ek user + ek requestId = sirf ek interview. Do request ek saath aaye to MongoDB khud
+// doosri ko E11000 (duplicate key) dega — isi se double-click par credit do baar nahi katta
+interviewSchema.index({ userId: 1, requestId: 1 }, { unique: true });
 
 const Interview = mongoose.model("Interview", interviewSchema);
 

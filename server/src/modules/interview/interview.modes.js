@@ -12,7 +12,8 @@ export const TIME_LIMITS = { easy: 60, medium: 90, hard: 120 };
 // dropdown ke options — free text nahi, taaki prompt me ajeeb cheezein na jaaye
 export const EXPERIENCE_LEVELS = ["Fresher", "0-1 years", "1-3 years", "3-5 years", "5+ years"];
 
-export const INTERVIEW_STATUS = ["in_progress", "completed", "abandoned"];
+// starting = credit kat raha hai / AI questions bana raha hai (double-click isi status se pakadte hai)
+export const INTERVIEW_STATUS = ["starting", "in_progress", "completed", "abandoned"];
 
 // 4 scoring criteria — har answer ko har ek par 0-10 milta hai
 export const CRITERIA = ["communication", "content", "technical", "confidence"];

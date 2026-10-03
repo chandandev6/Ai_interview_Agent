@@ -17,23 +17,23 @@
 ### 0.1 Current focus
 | | |
 |---|---|
-| **Now** | Step 7: Start interview (atomic credits + questions) |
-| **Next** | Step 8: Submit & evaluate answer |
+| **Now** | Step 8: Submit & evaluate answer |
+| **Next** | Step 9: Finish + report + history API |
 | **Milestone** | 🎯 MVP (end of Stage 4): target **2026-10-22** |
-| **Last updated** | 2026-10-01 |
+| **Last updated** | 2026-10-03 |
 
 ### 0.2 Stage progress
 | Stage | Steps | Done | Progress | Target date | Status |
 |-------|-------|------|----------|-------------|--------|
 | 0. Foundation | — | ✅ | `██████████` 100% | 2026-09-29 | ✅ |
 | 1. Setup for growth | 1–4 (+2b) | 5/5 | `██████████` 100% | 2026-10-02 | ✅ |
-| 2. Interview backend | 5–9 | 2/5 | `████░░░░░░` 40% | 2026-10-09 | 🟡 |
+| 2. Interview backend | 5–9 | 3/5 | `██████░░░░` 60% | 2026-10-09 | 🟡 |
 | 3. Interview frontend | 10–14 | 0/5 | `░░░░░░░░░░` 0% | 2026-10-17 | ⬜ |
 | 4. History & reports 🎯 MVP | 15–17 | 0/3 | `░░░░░░░░░░` 0% | 2026-10-22 | ⬜ |
 | 5. Payments | 18–20 | 0/3 | `░░░░░░░░░░` 0% | 2026-10-28 | ⬜ |
 | 6. Production & scale | 21–26 | 0/6 | `░░░░░░░░░░` 0% | 2026-11-06 | ⬜ |
 | 7. Differentiators | 27–33 | 0/7 | `░░░░░░░░░░` 0% | after launch | ⬜ |
-| **Total (Steps 1–26 + 2b)** | | **7/27** | `███░░░░░░░` 26% | | |
+| **Total (Steps 1–26 + 2b)** | | **8/27** | `███░░░░░░░` 30% | | |
 
 ### 0.3 Step board
 | # | Step | Area | Est. | Status | Started | Done | Notes |
@@ -45,7 +45,7 @@
 | 4 | Dev tooling (git, prettier, compress assets, README) | 🎨🖥️ | 0.5d | ✅ | 2026-09-30 | 2026-09-30 | Committed `d2f2c78` (incl. Prettier run) |
 | 5 | Interview model + MODES + prompts | 🖥️ | 0.5d | ✅ | 2026-09-30 | 2026-09-30 | model, modes, prompts, AI schemas, `askAiJson`; all prompts reviewed live on the free model |
 | 6 | Resume upload & parsing | 🖥️ | 1d | ✅ | 2026-10-01 | 2026-10-01 | `POST /api/interview/resume`; pdf-parse v2, first 5 pages, 12k chars; AI fail → 503. Not committed |
-| 7 | Start interview (atomic credits + questions) | 🖥️ | 1d | ⬜ | | | |
+| 7 | Start interview (atomic credits + questions) | 🖥️ | 1d | ✅ | 2026-10-03 | 2026-10-03 | `POST /api/interview/start`; idempotency key (`requestId` + unique index) → double-click charges once; refund on AI fail. Not committed |
 | 8 | Submit & evaluate answer | 🖥️ | 1d | ⬜ | | | |
 | 9 | Finish + report + history API | 🖥️ | 1d | ⬜ | | | |
 | 10 | Interview Redux slice + API | 🎨 | 0.5d | ⬜ | | | |
@@ -71,6 +71,7 @@ Newest first. Format: `date · who · step · what changed`.
 
 | Date | Who | Step | What |
 |------|-----|------|------|
+| 2026-10-03 | Claude | 7 | ✅ Step 7: `POST /api/interview/start` (isAuth → aiLimiter → validate). New `interview.schema.js` (role, experience enum, mode enum, optional resume, `requestId` UUID). Model: `requestId` + unique index `{userId, requestId}`, new status `starting` (default). Service order: 1) create interview (reserve; E11000 → duplicate: `starting` → 409 `INTERVIEW_STARTING`, done → same interview, no charge) 2) atomic `$gte`/`$inc` credit (none → delete reserve, 402 `NOT_ENOUGH_CREDITS`) 3) `askAiJson` questions, difficulty/time from `QUESTION_PLAN` 4) save `in_progress` → 201. Any fail after charge → refund + delete reserve (503 `AI_UNAVAILABLE`). Verified on test servers: 401/400s; double click same requestId → 201 + 409, credit 100→50, 1 interview; replay → same id; 0 credits → 402; 50 credits + 2 parallel different ids → one 201, one 402; bad API key → 503 + full refund, then retry same requestId → 201. Test users deleted. `npm run check` passes. Not committed. |
 | 2026-10-01 | Claude | 6 | ✅ Step 6: `npm i pdf-parse` (v2), `interview.service.js` (`parseResume`: text from first 5 pages, <50 chars → 400 `RESUME_NO_TEXT`, unreadable → 400 `INVALID_PDF`, trim 12k, `askAiJson` → AI fail = 503 `AI_UNAVAILABLE`), controller (no file → 400 `RESUME_MISSING`), `interview.routes.js` (isAuth → aiLimiter → upload.single), mounted `/api/interview`. Verified with a fake test resume: no login 401, no file / .docx / 6 MB / broken PDF / docx renamed as PDF / wrong field → 400; real PDF → 200 with correct skills + 2 projects (~20 s on free model; once got 3× OpenRouter 504 → clean 503). `npm run check` passes. Not committed. |
 | 2026-09-30 | Claude | 5 | ✅ Step 5: `interview.modes.js` (MODES with focus, rubric, weights; plan; time limits; experience levels), `interview.model.js`, `interview.prompts.js` (4 prompts, data-in-tags anti-injection), `interview.ai-schemas.js`, `askAiJson` + fallback models (env `OPENROUTER_FALLBACK_MODELS`). Live review on free model: resume parse ignored injected line; questions used candidate's projects; good/weak/cheat answers scored 8/2/0; report specific; model validates. `npm run check` passes. Not committed. |
 | 2026-09-30 | You | 3, 4 | ✅ Committed Step 3 (`183fa00`) and Step 4 (`d2f2c78`, incl. Prettier format). **Stage 1 complete.** |
@@ -107,6 +108,8 @@ Newest first. Format: `date · who · step · what changed`.
 | — | Open | Payment gateway: Razorpay (India) or Stripe? | ❓ Decide before Step 19 |
 | 2026-09-30 | Decision | AI: free models for now — `nvidia/nemotron-3-super-120b-a12b:free` + fallbacks `google/gemma-4-31b-it:free`, `google/gemma-4-26b-a4b-it:free` (OpenRouter account is free tier). Switch `OPENROUTER_MODEL` to a paid model before real users. | ✅ Decided |
 | 2026-09-30 | Decision | Interview: 50 credits (all modes), 5 questions (easy, easy, medium, medium, hard), time limits 60/90/120 s, resume optional, follow-up questions later (Stage 7) | ✅ Decided |
+| 2026-10-03 | Decision | Double-click on Start: server idempotency key (`requestId` UUID per attempt + unique index, reserve → charge → AI → refund on fail). Frontend disabled button in Step 11. "One active interview per user" later (Stage 7) | ✅ Decided |
+| 2026-10-03 | Known gap | If the server crashes mid-start (after charging, before refund), the interview stays `starting` and credits are lost. Fix later: cleanup job refunds `starting` interviews older than ~5 min (Stage 6, with the queue) | ⏭️ Later |
 | 2026-09-30 | Action | Fix `MAIL_FROM` in `server/.env` to `InterviewIQ <you@gmail.com>` format | ⬜ Owner: you |
 
 ---
@@ -456,11 +459,12 @@ Own passwords with bcrypt (not Firebase email auth) — chosen to learn hashing.
 **✅ Done when:** uploading your own resume returns sensible skills and projects, a `.docx` returns 400, and a 6 MB file returns 400.
 
 #### Step 7 🖥️ Start interview (credits + questions) ⏱️ 1 day
-- [ ] `POST /api/interview/start` with body `{ role, experience, mode, resume? }`
-- [ ] **Atomic credit deduction:** `User.findOneAndUpdate({ _id, credit: { $gte: cost } }, { $inc: { credit: -cost } }, { new: true })`. If this returns `null`, respond 402 "Not enough credits".
-- [ ] Generate N questions with `askAi(..., { json: true })`, validate with zod, and retry once
-- [ ] If the AI fails, **refund the credits** and return 503
-- [ ] Save the Interview with `status: "in_progress"` and return `{ interviewId, questions (text, difficulty, timeLimitSec only), credit }`
+- [x] `POST /api/interview/start` with body `{ role, experience, mode, resume?, requestId }`
+- [x] **Double-click safe:** `requestId` (UUID from frontend) + unique index `{ userId, requestId }`; interview is created first (status `starting`), duplicate → 409 or the same interview, never a second charge
+- [x] **Atomic credit deduction:** `User.findOneAndUpdate({ _id, credit: { $gte: cost } }, { $inc: { credit: -cost } }, { new: true })`. If this returns `null`, respond 402 "Not enough credits".
+- [x] Generate N questions with `askAiJson` (zod-validated, retries)
+- [x] If the AI fails, **refund the credits** and return 503
+- [x] Save the Interview with `status: "in_progress"` and return `{ interviewId, questions (text, difficulty, timeLimitSec only), credit }`
 
 **✅ Done when:** credits drop by `cost`, a user with 0 credits gets 402, and forcing an AI error (bad API key) refunds the credits.
 
