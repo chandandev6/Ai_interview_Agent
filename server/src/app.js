@@ -6,6 +6,7 @@ import compression from "compression";
 import cookieParser from "cookie-parser";
 import authRouter from "./modules/auth/auth.routes.js";
 import userRouter from "./modules/user/user.routes.js";
+import interviewRouter from "./modules/interview/interview.routes.js";
 import { notFound, errorHandler } from "./middlewares/errorHandler.js";
 import { globalLimiter } from "./middlewares/rateLimit.js";
 import { env } from "./config/env.js";
@@ -40,6 +41,7 @@ app.use(cookieParser());
 // naya feature = naya module + yaha ek line
 app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
+app.use("/api/interview", interviewRouter);
 
 app.get("/", (req, res) => {
     return res.json({ message: "Server started" });

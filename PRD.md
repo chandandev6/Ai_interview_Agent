@@ -17,23 +17,23 @@
 ### 0.1 Current focus
 | | |
 |---|---|
-| **Now** | Step 6: Resume upload & parsing |
-| **Next** | Step 7: Start interview (atomic credits + questions) |
+| **Now** | Step 7: Start interview (atomic credits + questions) |
+| **Next** | Step 8: Submit & evaluate answer |
 | **Milestone** | 🎯 MVP (end of Stage 4): target **2026-10-22** |
-| **Last updated** | 2026-09-30 |
+| **Last updated** | 2026-10-01 |
 
 ### 0.2 Stage progress
 | Stage | Steps | Done | Progress | Target date | Status |
 |-------|-------|------|----------|-------------|--------|
 | 0. Foundation | — | ✅ | `██████████` 100% | 2026-09-29 | ✅ |
 | 1. Setup for growth | 1–4 (+2b) | 5/5 | `██████████` 100% | 2026-10-02 | ✅ |
-| 2. Interview backend | 5–9 | 1/5 | `██░░░░░░░░` 20% | 2026-10-09 | 🟡 |
+| 2. Interview backend | 5–9 | 2/5 | `████░░░░░░` 40% | 2026-10-09 | 🟡 |
 | 3. Interview frontend | 10–14 | 0/5 | `░░░░░░░░░░` 0% | 2026-10-17 | ⬜ |
 | 4. History & reports 🎯 MVP | 15–17 | 0/3 | `░░░░░░░░░░` 0% | 2026-10-22 | ⬜ |
 | 5. Payments | 18–20 | 0/3 | `░░░░░░░░░░` 0% | 2026-10-28 | ⬜ |
 | 6. Production & scale | 21–26 | 0/6 | `░░░░░░░░░░` 0% | 2026-11-06 | ⬜ |
 | 7. Differentiators | 27–33 | 0/7 | `░░░░░░░░░░` 0% | after launch | ⬜ |
-| **Total (Steps 1–26 + 2b)** | | **6/27** | `██░░░░░░░░` 22% | | |
+| **Total (Steps 1–26 + 2b)** | | **7/27** | `███░░░░░░░` 26% | | |
 
 ### 0.3 Step board
 | # | Step | Area | Est. | Status | Started | Done | Notes |
@@ -44,7 +44,7 @@
 | 3 | Client API layer + ProtectedRoute + lazy pages | 🎨 | 0.5d | ✅ | 2026-09-30 | 2026-09-30 | `src/api/`, interceptor, `loading`, ProtectedRoute, lazy pages; 10/10 headless-Chrome checks |
 | 4 | Dev tooling (git, prettier, compress assets, README) | 🎨🖥️ | 0.5d | ✅ | 2026-09-30 | 2026-09-30 | Committed `d2f2c78` (incl. Prettier run) |
 | 5 | Interview model + MODES + prompts | 🖥️ | 0.5d | ✅ | 2026-09-30 | 2026-09-30 | model, modes, prompts, AI schemas, `askAiJson`; all prompts reviewed live on the free model |
-| 6 | Resume upload & parsing | 🖥️ | 1d | ⬜ | | | |
+| 6 | Resume upload & parsing | 🖥️ | 1d | ✅ | 2026-10-01 | 2026-10-01 | `POST /api/interview/resume`; pdf-parse v2, first 5 pages, 12k chars; AI fail → 503. Not committed |
 | 7 | Start interview (atomic credits + questions) | 🖥️ | 1d | ⬜ | | | |
 | 8 | Submit & evaluate answer | 🖥️ | 1d | ⬜ | | | |
 | 9 | Finish + report + history API | 🖥️ | 1d | ⬜ | | | |
@@ -71,6 +71,7 @@ Newest first. Format: `date · who · step · what changed`.
 
 | Date | Who | Step | What |
 |------|-----|------|------|
+| 2026-10-01 | Claude | 6 | ✅ Step 6: `npm i pdf-parse` (v2), `interview.service.js` (`parseResume`: text from first 5 pages, <50 chars → 400 `RESUME_NO_TEXT`, unreadable → 400 `INVALID_PDF`, trim 12k, `askAiJson` → AI fail = 503 `AI_UNAVAILABLE`), controller (no file → 400 `RESUME_MISSING`), `interview.routes.js` (isAuth → aiLimiter → upload.single), mounted `/api/interview`. Verified with a fake test resume: no login 401, no file / .docx / 6 MB / broken PDF / docx renamed as PDF / wrong field → 400; real PDF → 200 with correct skills + 2 projects (~20 s on free model; once got 3× OpenRouter 504 → clean 503). `npm run check` passes. Not committed. |
 | 2026-09-30 | Claude | 5 | ✅ Step 5: `interview.modes.js` (MODES with focus, rubric, weights; plan; time limits; experience levels), `interview.model.js`, `interview.prompts.js` (4 prompts, data-in-tags anti-injection), `interview.ai-schemas.js`, `askAiJson` + fallback models (env `OPENROUTER_FALLBACK_MODELS`). Live review on free model: resume parse ignored injected line; questions used candidate's projects; good/weak/cheat answers scored 8/2/0; report specific; model validates. `npm run check` passes. Not committed. |
 | 2026-09-30 | You | 3, 4 | ✅ Committed Step 3 (`183fa00`) and Step 4 (`d2f2c78`, incl. Prettier format). **Stage 1 complete.** |
 | 2026-09-30 | Claude | 4 | Root Prettier + scripts, server ESLint (3 fixes), WebP images (−88%), README. Verified: lint clean both apps, client build, all 8 WebP load in Chrome, Prettier dry run on a copy keeps lint/build/server working. Format run left to user so Step 3 commit stays readable. |
@@ -446,11 +447,11 @@ Own passwords with bcrypt (not Firebase email auth) — chosen to learn hashing.
 **✅ Done when:** the model imports cleanly and the prompts are reviewed.
 
 #### Step 6 🖥️ Resume upload & parsing ⏱️ 1 day
-- [ ] `npm i pdf-parse`
-- [ ] `POST /api/interview/resume` with `isAuth`, `aiLimiter`, `upload.single("resume")`
-- [ ] Extract the text (reject if empty, e.g. a scanned image PDF) and trim it to about 12k characters
-- [ ] `askAi` returns `{ skills[], projects[{name, tech[], summary}], experienceSummary }`
-- [ ] Return the parsed data. Don't store the PDF file.
+- [x] `npm i pdf-parse` (v2: `new PDFParse({ data })`, only first 5 pages)
+- [x] `POST /api/interview/resume` with `isAuth`, `aiLimiter`, `upload.single("resume")`
+- [x] Extract the text (reject if empty, e.g. a scanned image PDF) and trim it to about 12k characters
+- [x] `askAi` returns `{ skills[], projects[{name, tech[], summary}], experienceSummary }`
+- [x] Return the parsed data. Don't store the PDF file.
 
 **✅ Done when:** uploading your own resume returns sensible skills and projects, a `.docx` returns 400, and a 6 MB file returns 400.
 
