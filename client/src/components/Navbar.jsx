@@ -33,22 +33,22 @@ function Navbar() {
     };
 
     return (
-        <div className="bg-[#f3f3f3] flex justify-center items-center w-full h-20 px-8 py-4">
+        <div className="bg-[#f3f3f3] flex justify-center items-center w-full h-20 px-3 sm:px-8 py-4">
             <motion.div
                 initial={{ opacity: 0, y: -40 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 1.5 }}
-                className="w-full max-w-6xl bg-white rounded-3xl shadow-sm border border-gray-200 justify-between flex items-center relative px-8 py-4"
+                className="w-full max-w-6xl bg-white rounded-3xl shadow-sm border border-gray-200 justify-between flex items-center gap-3 relative px-4 sm:px-8 py-4"
             >
-                <div className="flex items-center gap-3 cursor-pointer">
-                    <div className="bg-black text-white p-2 rounded-lg">
+                <div className="flex items-center gap-3 cursor-pointer min-w-0">
+                    <div className="bg-black text-white p-2 rounded-lg shrink-0">
                         <BsRobot size={18} />
                     </div>
 
-                    <h1 className="text-2xl font-bold">Ai_Interview_Agent</h1>
+                    <h1 className="text-lg sm:text-2xl font-bold truncate">Ai_Interview_Agent</h1>
                 </div>
 
-                <div className="flex items-center gap-6 relative">
+                <div className="flex items-center gap-3 sm:gap-6 relative shrink-0">
                     <div className="relative">
                         <button
                             onClick={() => {

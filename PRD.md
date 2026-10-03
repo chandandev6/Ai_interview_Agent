@@ -17,8 +17,8 @@
 ### 0.1 Current focus
 | | |
 |---|---|
-| **Now** | Step 10: Interview Redux slice + API |
-| **Next** | Step 11: Setup screen |
+| **Now** | Step 15: History page |
+| **Next** | Step 16: Analytics (charts + stats API) |
 | **Milestone** | 🎯 MVP (end of Stage 4): target **2026-10-22** |
 | **Last updated** | 2026-10-04 |
 
@@ -28,12 +28,12 @@
 | 0. Foundation | — | ✅ | `██████████` 100% | 2026-09-29 | ✅ |
 | 1. Setup for growth | 1–4 (+2b) | 5/5 | `██████████` 100% | 2026-10-02 | ✅ |
 | 2. Interview backend | 5–9 | 5/5 | `██████████` 100% | 2026-10-09 | ✅ |
-| 3. Interview frontend | 10–14 | 0/5 | `░░░░░░░░░░` 0% | 2026-10-17 | ⬜ |
+| 3. Interview frontend | 10–14 | 5/5 | `██████████` 100% | 2026-10-17 | ✅ |
 | 4. History & reports 🎯 MVP | 15–17 | 0/3 | `░░░░░░░░░░` 0% | 2026-10-22 | ⬜ |
 | 5. Payments | 18–20 | 0/3 | `░░░░░░░░░░` 0% | 2026-10-28 | ⬜ |
 | 6. Production & scale | 21–26 | 0/6 | `░░░░░░░░░░` 0% | 2026-11-06 | ⬜ |
 | 7. Differentiators | 27–33 | 0/7 | `░░░░░░░░░░` 0% | after launch | ⬜ |
-| **Total (Steps 1–26 + 2b)** | | **10/27** | `████░░░░░░` 37% | | |
+| **Total (Steps 1–26 + 2b)** | | **15/27** | `██████░░░░` 56% | | |
 
 ### 0.3 Step board
 | # | Step | Area | Est. | Status | Started | Done | Notes |
@@ -46,13 +46,13 @@
 | 5 | Interview model + MODES + prompts | 🖥️ | 0.5d | ✅ | 2026-09-30 | 2026-09-30 | model, modes, prompts, AI schemas, `askAiJson`; all prompts reviewed live on the free model |
 | 6 | Resume upload & parsing | 🖥️ | 1d | ✅ | 2026-10-01 | 2026-10-01 | `POST /api/interview/resume`; pdf-parse v2, first 5 pages, 12k chars; AI fail → 503. Committed `3a133a5` |
 | 7 | Start interview (atomic credits + questions) | 🖥️ | 1d | ✅ | 2026-10-03 | 2026-10-03 | `POST /api/interview/start`; idempotency key (`requestId` + unique index) → double-click charges once; refund on AI fail. Committed `3a133a5` |
-| 8 | Submit & evaluate answer | 🖥️ | 1d | ✅ | 2026-10-04 | 2026-10-04 | `POST /api/interview/:id/answer`; claim answer atomically first → 409 on double submit; 404 for others' interviews; AI fail → claim undone + 503. Not committed |
-| 9 | Finish + report + history API | 🖥️ | 1d | ✅ | 2026-10-04 | 2026-10-04 | finish (claim → `finishing`, scores in code, AI text), `GET /:id`, `GET /history` (paged, lean, projection); `docs/api.postman.json`. Not committed |
-| 10 | Interview Redux slice + API | 🎨 | 0.5d | ⬜ | | | |
-| 11 | Step 1: Setup screen | 🎨 | 1d | ⬜ | | | |
-| 12 | Step 2: Live interview (voice, avatar, timer) | 🎨 | 2–3d | ⬜ | | | Core feature |
-| 13 | Step 3: Report screen | 🎨 | 1d | ⬜ | | | |
-| 14 | End-to-end polish | 🎨🖥️ | 1d | ⬜ | | | |
+| 8 | Submit & evaluate answer | 🖥️ | 1d | ✅ | 2026-10-04 | 2026-10-04 | `POST /api/interview/:id/answer`; claim answer atomically first → 409 on double submit; 404 for others' interviews; AI fail → claim undone + 503. Committed `062562d` |
+| 9 | Finish + report + history API | 🖥️ | 1d | ✅ | 2026-10-04 | 2026-10-04 | finish (claim → `finishing`, scores in code, AI text), `GET /:id`, `GET /history` (paged, lean, projection); `docs/api.postman.json`. Committed `3d31f3b` |
+| 10 | Interview Redux slice + API | 🎨 | 0.5d | ✅ | 2026-10-04 | 2026-10-04 | `interview.api.js`, `interviewSlice` (+ restore after refresh), `setCredit` |
+| 11 | Step 1: Setup screen | 🎨 | 1d | ✅ | 2026-10-04 | 2026-10-04 | role suggestions, experience, mode cards, resume drop zone + chips, avatar, idempotent Start |
+| 12 | Step 2: Live interview (voice, avatar, timer) | 🎨 | 2–3d | ✅ | 2026-10-04 | 2026-10-04 | TTS + STT + countdown hooks, `QuestionRound`, resume after refresh. Real-mic test pending (you) |
+| 13 | Step 3: Report screen | 🎨 | 1d | ✅ | 2026-10-04 | 2026-10-04 | `/report/:id` page; PDF button → Step 17, History button → Step 15 |
+| 14 | End-to-end polish | 🎨🖥️ | 1d | ✅ | 2026-10-04 | 2026-10-04 | react-hot-toast, skeleton, retry buttons, low-credit banner, mobile Navbar fix. Not committed |
 | 15 | History page | 🎨 | 1d | ⬜ | | | |
 | 16 | Analytics (charts + stats API) | 🎨🖥️ | 1d | ⬜ | | | |
 | 17 | Report page + PDF download | 🎨 | 1d | ⬜ | | | 🎯 MVP → deploy beta |
@@ -71,6 +71,8 @@ Newest first. Format: `date · who · step · what changed`.
 
 | Date | Who | Step | What |
 |------|-----|------|------|
+| 2026-10-04 | Claude | 10–14 | ✅ Stage 3 interview frontend (user asked to do it all in one go, no backend change needed). **API/state:** `api/interview.api.js` (6 endpoints), `redux/interviewSlice.js` (setup → in_progress; `interviewRestored` from GET /:id = first unscored question; `resumed` gate), `userSlice.setCredit`, `utils/activeInterview.js` (sessionStorage id → refresh resumes, credits not wasted), `constants/interview.js`. **Setup (Step1setup):** role + datalist, experience enum, mode cards with cost, PDF drop zone (type/5 MB check → chips), avatar videos (`#t=0.5` preview), Start keeps the same `requestId` on network failure / INTERVIEW_STARTING and makes a new one after a server answer; low-credit banner. **Live (Step2interview + interview/QuestionRound keyed by index):** hooks `useSpeechSynthesis` (voice by avatar, safety timeout), `useSpeechRecognition` (en-IN, continuous, interim, auto-restart, fatal errors → type; `stop()` waits for last chunk), `useCountdown` (Date.now based, auto-submit at 0). Avatar video plays while speaking; Repeat/Skip/Submit; ALREADY_ANSWERED → reads saved score; 503 → keep text + retry; beforeunload warning; finish auto-retries on 409 evaluating/finishing, else Try again button; StrictMode-safe (one finish request per attempt). **Report:** `/report/:id` (state passed from finish, else GET; skeleton; not found / not finished states), `Step3report` (animated ring, 4 bars, strengths/weaknesses/improvements, per-question accordion). Toaster in App.jsx, Navbar mobile padding/truncate. `npm i react-hot-toast`. **Verified in headless Chrome (test servers 8100/5174):** setup → Start (credits 100→50 in Navbar) → Q1–Q5 typed (Q3 skipped) → reload mid-interview → "Welcome back, question 3 of 5" → Continue → finish → /report/:id, sessionStorage cleared, report survives reload, unknown id → not found, no console errors, no horizontal overflow at 390 px. AI gave 0 because my scripted answers didn't match its new questions (correct anti-off-topic behaviour). **Not tested:** real microphone / real voices (headless has none), 503 retry UI, low-credit banner in browser. Test data deleted. `npm run check` passes. Not committed. |
+| 2026-10-04 | You | 8, 9 | ✅ Committed Steps 8 + 9 (`062562d`, `3d31f3b`). |
 | 2026-10-04 | Claude | 9 | ✅ Step 9: new status `finishing`. `POST /:id/finish` (isAuth → aiLimiter → validate params): atomic claim `in_progress → finishing` only if no answer is claimed-but-unscored (`$not $elemMatch {answer string, scores missing}`); failed claim → 404 / completed → same report (200) / 409 `INTERVIEW_FINISHING` / 409 `ANSWER_BEING_EVALUATED` / 409 `INTERVIEW_NOT_ACTIVE`. `calculateScores`: per-criterion averages (unanswered = 0, 1 decimal) + weighted overall ×10 with mode weights. Zero answers → fixed text, no AI; else `askAiJson(reportPrompt)`. Any fail → back to `in_progress` (503). `GET /:id` owner-only (hides userId/requestId). `GET /history?page&limit` (limit ≤50): excludes `starting`, `.lean()`, light projection, sort createdAt desc, `Promise.all` with count. Route `/history` before `/:id`. `docs/api.postman.json` (login → resume → start (saves interviewId) → 5 answers → finish → get → history). Verified: 401/400; other user 404 (finish + get); `starting` → 409; pending answer → 409; zero answers → fixed report; finish again → same report; AI down → 503 + back to in_progress; full flow overall 43 = hand calc (4.4/4.0/4.4/4.4, technical weights); 2 parallel finish → 200 + 409; answer after complete → 409; history order/paging/no questions/limit=100, page=0, page=abc → 400; other user empty list. aiLimiter 429 seen during testing (expected). Test data deleted. `npm run check` passes. Not committed. |
 | 2026-10-04 | Claude | 8 | ✅ Step 8: `POST /api/interview/:id/answer` (isAuth → aiLimiter → validate params+body). Schemas: `interviewIdParamsSchema` (24-hex id), `submitAnswerSchema` (index 0–4, answer ≤5000 chars, empty allowed, timeTakenSec ≥0). Service `submitAnswer`: 1) atomic claim `findOneAndUpdate({_id,userId,status:in_progress, q.i exists, q.i.answer not a string})` 2) empty answer → all 0, no AI; else `askAiJson(evaluationPrompt)`; AI fail → undo claim + 503 3) save scores/feedback/timeTaken (capped at limit). Failed claim → `explainAnswerConflict` gives 404 / 409 `INTERVIEW_NOT_ACTIVE` / 409 `ALREADY_ANSWERED`. **Bug found in testing:** filter `"questions.3.answer": null` always matched (MongoDB reads `3` as index AND as a field name on each element → missing = null) → switched to `$not: {$type: "string"}`. Verified: 401, bad id/index/type/too long → 400; other user + random id → 404; completed → 409; empty → 0s; resubmit → 409; 2 parallel same question → one 200 + one 409; bad API key → 503 and answer reset, retry → 200; timeTakenSec 9999 → 60. Test users deleted. `npm run check` passes. Not committed. |
 | 2026-10-04 | You | 6, 7 | ✅ Committed Steps 6 + 7 (`31936b4`, `3a133a5`). |
@@ -494,39 +496,39 @@ Own passwords with bcrypt (not Firebase email auth) — chosen to learn hashing.
 ### Stage 3 — Interview frontend
 
 #### Step 10 🎨 Interview slice + API ⏱️ 0.5 day
-- [ ] `api/interview.api.js` with all Stage 2 endpoints
-- [ ] `redux/interviewSlice.js` holding `{ interviewId, questions, currentIndex, evaluations, report, status }`
-- [ ] Keep the Navbar credit count updated from the `/start` response
+- [x] `api/interview.api.js` with all Stage 2 endpoints
+- [x] `redux/interviewSlice.js` holding `{ interviewId, questions, currentIndex, evaluations, report, status }`
+- [x] Keep the Navbar credit count updated from the `/start` response
 
 #### Step 11 🎨 Step 1: Setup screen ⏱️ 1 day
-- [ ] Role input with suggestions (Frontend, Backend, Full Stack, Data Analyst, …)
-- [ ] Experience select (Fresher, 1–3 yrs, 3–5 yrs, 5+ yrs)
-- [ ] Mode cards using `HR.png`, `tech.png`, `confi.png`, each showing its credit cost
-- [ ] PDF drag-and-drop zone that shows parsed skills and projects as chips (optional but recommended)
-- [ ] Avatar choice (male/female) and a "Start Interview" button that shows the cost, with a loading state while questions generate
+- [x] Role input with suggestions (Frontend, Backend, Full Stack, Data Analyst, …)
+- [x] Experience select (Fresher, 1–3 yrs, 3–5 yrs, 5+ yrs)
+- [x] Mode cards using `HR.png`, `tech.png`, `confi.png`, each showing its credit cost
+- [x] PDF drag-and-drop zone that shows parsed skills and projects as chips (optional but recommended)
+- [x] Avatar choice (male/female) and a "Start Interview" button that shows the cost, with a loading state while questions generate
 
 **✅ Done when:** clicking Start creates an interview and moves to Step 2.
 
 #### Step 12 🎨 Step 2: Live interview (the core feature) ⏱️ 2–3 days
-- [ ] `hooks/useSpeechSynthesis.js`: speak the question with `window.speechSynthesis`
-- [ ] `hooks/useSpeechRecognition.js`: `webkitSpeechRecognition`, continuous, interim results, and restart on end. Fall back to a text box if the browser doesn't support it (Firefox).
-- [ ] `hooks/useTimer.js`: countdown per question that auto-submits at 0
-- [ ] Layout: avatar video (`male-ai.mp4` / `female-ai.mp4`, playing while the AI speaks) on one side, and the question, live transcript (editable), timer and mic button on the other
-- [ ] Submit, then show a short feedback toast and move to the next question. Add a progress bar (Q 2/5).
-- [ ] Ask "Are you sure?" on leave or refresh (`beforeunload`)
-- [ ] After the last question, call `/finish` and go to Step 3
+- [x] `hooks/useSpeechSynthesis.js`: speak the question with `window.speechSynthesis`
+- [x] `hooks/useSpeechRecognition.js`: `webkitSpeechRecognition`, continuous, interim results, and restart on end. Fall back to a text box if the browser doesn't support it (Firefox).
+- [x] `hooks/useTimer.js`: countdown per question that auto-submits at 0
+- [x] Layout: avatar video (`male-ai.mp4` / `female-ai.mp4`, playing while the AI speaks) on one side, and the question, live transcript (editable), timer and mic button on the other
+- [x] Submit, then show a short feedback toast and move to the next question. Add a progress bar (Q 2/5).
+- [x] Ask "Are you sure?" on leave or refresh (`beforeunload`)
+- [x] After the last question, call `/finish` and go to Step 3
 
 **✅ Done when:** you can complete a full interview by voice in Chrome, and by typing in Firefox.
 
 #### Step 13 🎨 Step 3: Report screen ⏱️ 1 day
-- [ ] Overall score ring, 4 skill bars, strengths/weaknesses/improvements lists
-- [ ] Per-question accordion: question, your answer, score, feedback
-- [ ] Buttons: "Download PDF" (Step 17), "New Interview", "View History"
+- [x] Overall score ring, 4 skill bars, strengths/weaknesses/improvements lists
+- [x] Per-question accordion: question, your answer, score, feedback
+- [ ] Buttons: "Download PDF" (Step 17), "New Interview" ✅, "View History" (Step 15)
 
 #### Step 14 🎨🖥️ End-to-end polish ⏱️ 1 day
-- [ ] Loading skeletons, error toasts (`react-hot-toast`), empty states
-- [ ] Mobile responsive check for Home, Setup, Interview and Report
-- [ ] Handle credits running out (link to `/pricing`) and AI failures (retry button)
+- [x] Loading skeletons, error toasts (`react-hot-toast`), empty states
+- [x] Mobile responsive check for Home, Setup, Interview and Report
+- [x] Handle credits running out (link to `/pricing`) and AI failures (retry button)
 
 **✅ Done when:** a friend can use it with no help and with no console errors.
 

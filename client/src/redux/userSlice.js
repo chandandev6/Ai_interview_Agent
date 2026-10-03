@@ -20,9 +20,13 @@ const userSlice = createSlice({
         finishLoading: (state) => {
             state.loading = false;
         },
+        // interview start par credit kata — server ka naya balance Navbar me dikhao (poora user dobara mat mango)
+        setCredit: (state, action) => {
+            if (state.userData) state.userData.credit = action.payload;
+        },
     },
 });
 
-export const { setUserData, finishLoading } = userSlice.actions;
+export const { setUserData, finishLoading, setCredit } = userSlice.actions;
 
 export default userSlice.reducer;

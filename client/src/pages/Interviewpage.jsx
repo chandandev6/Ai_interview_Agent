@@ -1,32 +1,48 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import Navbar from "../components/Navbar";
+import PageLoader from "../components/PageLoader";
 import Step1setup from "../components/Step1setup";
 import Step2interview from "../components/Step2interview";
-import Step3report from "../components/Step3report";
+import { getInterview } from "../api/interview.api.js";
+import { interviewRestored } from "../redux/interviewSlice.js";
+import { clearActiveInterview, getActiveInterview } from "../utils/activeInterview.js";
 
+// /interview — status "setup" → form, "in_progress" → live interview. Report /report/:id par
 function Interviewpage() {
-    const [step, setStep] = useState(1);
-    const [interviewData, setInterviewData] = useState(null);
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
+    const status = useSelector((state) => state.interview.status);
+
+    // refresh hua aur sessionStorage me chalu interview hai → server se wapas lao (credit kat chuka hai, chhodna nahi)
+    const [restoring, setRestoring] = useState(() => status === "setup" && Boolean(getActiveInterview()));
+
+    useEffect(() => {
+        if (!restoring) return;
+        const saved = getActiveInterview();
+        getInterview(saved.interviewId)
+            .then((res) => {
+                const { interview } = res.data;
+                if (interview.status === "completed") {
+                    clearActiveInterview();
+                    navigate(`/report/${interview._id}`, { replace: true, state: { interview } });
+                } else if (interview.status === "in_progress" || interview.status === "finishing") {
+                    dispatch(interviewRestored({ interview, avatar: saved.avatar }));
+                } else {
+                    clearActiveInterview();
+                }
+            })
+            .catch(() => clearActiveInterview()) // nahi mila / kisi aur ka — naya setup dikhao
+            .finally(() => setRestoring(false));
+    }, [restoring, dispatch, navigate]);
+
+    if (restoring) return <PageLoader />;
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            {step === 1 && (
-                <Step1setup
-                    onStart={(data) => {
-                        setInterviewData(data);
-                        setStep(2);
-                    }}
-                />
-            )}
-            {step === 2 && (
-                <Step2interview
-                    interviewData={interviewData}
-                    onFinish={(report) => {
-                        setInterviewData(report);
-                        setStep(3);
-                    }}
-                />
-            )}
-            {step === 3 && <Step3report report={interviewData} />}
+        <div className="min-h-screen bg-[#f3f3f3]">
+            <Navbar />
+            {status === "in_progress" ? <Step2interview /> : <Step1setup />}
         </div>
     );
 }

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
 import { useDispatch } from "react-redux";
+import { Toaster } from "react-hot-toast";
 import Home from "./pages/Home";
 import PageLoader from "./components/PageLoader";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -37,6 +38,8 @@ function App() {
     return (
         // lazy page ki file aa rahi ho tab tak spinner
         <Suspense fallback={<PageLoader />}>
+            {/* chhote notifications (answer scored, errors) — poori app me ek hi jagah */}
+            <Toaster position="top-center" />
             <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/auth" element={<Auth />} />
