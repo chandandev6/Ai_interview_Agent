@@ -24,3 +24,6 @@ export const getInterview = (interviewId) => api.get(`/api/interview/${interview
 // mode na ho (undefined) to axios use URL me bhejta hi nahi → saare modes
 export const getHistory = ({ page = 1, limit = 10, mode } = {}) =>
     api.get("/api/interview/history", { params: { page, limit, mode } }).then(body);
+
+// analytics: summary, skill averages, mode wise, score trend (sirf completed interviews)
+export const getStats = () => api.get("/api/interview/stats").then(body);

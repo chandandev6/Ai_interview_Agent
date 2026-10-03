@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { PDFParse } from "pdf-parse";
 import AppError from "../../utils/AppError.js";
 import { askAiJson } from "../../lib/ai/openRouter.js";
@@ -345,4 +346,84 @@ export const getHistory = async (userId, { page, limit, mode }) => {
     ]);
 
     return { items, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+};
+
+const TREND_POINTS = 20; // chart me aakhri itne interviews — 500 points ka chart padha bhi nahi jaata
+
+// 1 decimal tak round (aggregation ke andar hi — client ko 6.333333 nahi bhejna)
+const round1 = (expr) => ({ $round: [expr, 1] });
+
+// analytics: summary + skill averages + mode wise + score trend — sab ek hi aggregation (ek DB round trip)
+export const getStats = async (userId) => {
+    const [result] = await Interview.aggregate([
+        // aggregate() me Mongoose string → ObjectId khud nahi badalta (find() badalta hai) — khud karo, warna 0 match
+        { $match: { userId: new mongoose.Types.ObjectId(userId), status: "completed" } },
+        {
+            // $facet = ek hi data par kai alag pipelines saath me
+            $facet: {
+                summary: [
+                    {
+                        $group: {
+                            _id: null,
+                            total: { $sum: 1 },
+                            averageScore: { $avg: "$report.overallScore" },
+                            bestScore: { $max: "$report.overallScore" },
+                            ...Object.fromEntries(CRITERIA.map((key) => [key, { $avg: `$report.averages.${key}` }])),
+                        },
+                    },
+                    {
+                        $project: {
+                            _id: 0,
+                            total: 1,
+                            averageScore: round1("$averageScore"),
+                            bestScore: 1,
+                            skills: Object.fromEntries(CRITERIA.map((key) => [key, round1(`$${key}`)])),
+                        },
+                    },
+                ],
+                byMode: [
+                    {
+                        $group: {
+                            _id: "$mode",
+                            count: { $sum: 1 },
+                            averageScore: { $avg: "$report.overallScore" },
+                            bestScore: { $max: "$report.overallScore" },
+                        },
+                    },
+                    {
+                        $project: {
+                            _id: 0,
+                            mode: "$_id",
+                            count: 1,
+                            averageScore: round1("$averageScore"),
+                            bestScore: 1,
+                        },
+                    },
+                    { $sort: { count: -1 } },
+                ],
+                // newest pehle le ke kaato, phir code me ulta (chart purane → naye chalta hai)
+                trend: [
+                    { $sort: { completedAt: -1 } },
+                    { $limit: TREND_POINTS },
+                    { $project: { _id: 1, role: 1, mode: 1, completedAt: 1, overallScore: "$report.overallScore" } },
+                ],
+            },
+        },
+    ]);
+
+    const summary = result.summary[0] ?? { total: 0, averageScore: null, bestScore: null, skills: null };
+    const trend = result.trend.reverse();
+    // pichle interview se kitna badla (+/-) — "improve ho raha hoon?" ka seedha jawab
+    const latest = trend.at(-1)?.overallScore ?? null;
+    const previous = trend.at(-2)?.overallScore ?? null;
+
+    return {
+        summary: {
+            ...summary,
+            latestScore: latest,
+            change: latest !== null && previous !== null ? latest - previous : null,
+        },
+        byMode: result.byMode,
+        trend,
+    };
 };

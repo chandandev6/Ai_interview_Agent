@@ -4,6 +4,7 @@ import {
     finishInterview,
     getHistory,
     getInterview,
+    getStats,
     parseResume,
     startInterview,
     submitAnswer,
@@ -44,4 +45,9 @@ export const getInterviewById = async (req, res) => {
 export const getInterviewHistory = async (req, res) => {
     const result = await getHistory(req.userId, req.query);
     return sendSuccess(res, { data: result });
+};
+
+export const getInterviewStats = async (req, res) => {
+    const stats = await getStats(req.userId);
+    return sendSuccess(res, { data: stats });
 };

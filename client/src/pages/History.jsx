@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { BsClockHistory, BsPlayFill } from "react-icons/bs";
 import Navbar from "../components/Navbar";
+import Analytics from "../components/history/Analytics.jsx";
 import { getHistory } from "../api/interview.api.js";
 import { resetInterview } from "../redux/interviewSlice.js";
 import { saveActiveInterview } from "../utils/activeInterview.js";
@@ -156,6 +157,8 @@ function History() {
                         New interview
                     </button>
                 </div>
+
+                <Analytics />
 
                 {/* mode filter */}
                 <div className="flex gap-2 overflow-x-auto pb-1 mb-6" role="tablist">

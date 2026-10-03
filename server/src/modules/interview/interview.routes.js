@@ -13,6 +13,7 @@ import {
     finishCurrentInterview,
     getInterviewById,
     getInterviewHistory,
+    getInterviewStats,
     startNewInterview,
     submitInterviewAnswer,
     uploadResume,
@@ -44,8 +45,9 @@ interviewRouter.post(
     finishCurrentInterview,
 );
 
-// "/history" ko "/:id" se PEHLE rakho — warna Express "history" ko hi id samajh leta
+// "/history" aur "/stats" ko "/:id" se PEHLE rakho — warna Express "history"/"stats" ko hi id samajh leta
 interviewRouter.get("/history", isAuth, validate({ query: historyQuerySchema }), getInterviewHistory);
+interviewRouter.get("/stats", isAuth, getInterviewStats);
 interviewRouter.get("/:id", isAuth, validate({ params: interviewIdParamsSchema }), getInterviewById);
 
 export default interviewRouter;
