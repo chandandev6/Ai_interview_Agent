@@ -3,9 +3,9 @@ import AppError from "../../utils/AppError.js";
 import { askAiJson } from "../../lib/ai/openRouter.js";
 import User from "../user/user.model.js";
 import Interview from "./interview.model.js";
-import { MODES, QUESTION_PLAN, TIME_LIMITS } from "./interview.modes.js";
-import { questionsPrompt, resumePrompt } from "./interview.prompts.js";
-import { questionsAiSchema, resumeAiSchema } from "./interview.ai-schemas.js";
+import { CRITERIA, MODES, QUESTION_PLAN, TIME_LIMITS } from "./interview.modes.js";
+import { evaluationPrompt, questionsPrompt, resumePrompt } from "./interview.prompts.js";
+import { evaluationAiSchema, questionsAiSchema, resumeAiSchema } from "./interview.ai-schemas.js";
 
 const RESUME_MAX_PAGES = 5; // resume 1-2 page ka hota hai — 300 page ka PDF server ko busy na kare
 const RESUME_MAX_CHARS = 12000; // AI ko itna hi bhejo — zyada text = zyada tokens = zyada paisa/time
@@ -123,4 +123,92 @@ export const startInterview = async (userId, { role, experience, mode, resume, r
     }
 
     return toStartResult(interview, user.credit);
+};
+
+// claim fail hua — kyun? ek chhota read karke sahi error do
+const explainAnswerConflict = async (userId, interviewId, questionIndex) => {
+    const interview = await Interview.findOne({ _id: interviewId, userId }).select("status questions.answer");
+    // kisi aur ka interview bhi "not found" — 403 bolte to pata chal jaata ki ye id exist karti hai
+    if (!interview) throw new AppError(404, "Interview not found.", "INTERVIEW_NOT_FOUND");
+    if (interview.status !== "in_progress") {
+        throw new AppError(409, "This interview is not in progress.", "INTERVIEW_NOT_ACTIVE");
+    }
+    if (!interview.questions[questionIndex])
+        throw new AppError(400, "This question does not exist.", "INVALID_QUESTION");
+    throw new AppError(409, "This question is already answered.", "ALREADY_ANSWERED");
+};
+
+// order: 1) answer claim (atomic)  2) AI evaluate  3) scores save. AI fail → claim wapas (retry ho sake)
+// claim pehle isliye — double-click ki doosri request step 1 par 409 kha jaati hai, AI tak nahi pahunchti
+export const submitAnswer = async (userId, interviewId, { questionIndex, answer, timeTakenSec }) => {
+    const path = `questions.${questionIndex}`;
+    const cleanAnswer = answer.trim();
+
+    // 1. claim — shart + update ek hi query me. MongoDB ek document par ek update ek time me karta hai,
+    // isliye do request ek saath aaye to bhi sirf ek ko "answer: null" milega
+    const interview = await Interview.findOneAndUpdate(
+        {
+            _id: interviewId,
+            userId, // owner check yahi ho gaya
+            status: "in_progress",
+            [`${path}.question`]: { $exists: true }, // bina iske "questions.7.answer: null" bhi match ho jaata (missing = null)
+            // "answer: null" NAHI chalta — array par "questions.3" ko MongoDB index 3 bhi padhta hai AUR har element
+            // ka "3" naam ka field bhi (jo missing = null) → hamesha match. "koi string nahi" wala check safe hai
+            [`${path}.answer`]: { $not: { $type: "string" } },
+        },
+        { $set: { [`${path}.answer`]: cleanAnswer, [`${path}.answeredAt`]: new Date() } },
+        { returnDocument: "after" },
+    );
+    if (!interview) return explainAnswerConflict(userId, interviewId, questionIndex);
+
+    const question = interview.questions[questionIndex];
+    // client ka time trust nahi — limit se zyada nahi maanenge
+    const timeTaken = Math.min(Math.round(timeTakenSec), question.timeLimitSec);
+
+    // 2. khaali / skip kiya answer → seedha 0, AI ka paisa + time bachao
+    let evaluation;
+    if (!cleanAnswer) {
+        evaluation = {
+            scores: Object.fromEntries(CRITERIA.map((key) => [key, 0])),
+            feedback: "No answer was given. Even a short attempt is better than skipping — try to say what you know.",
+        };
+    } else {
+        try {
+            evaluation = await askAiJson(
+                evaluationPrompt({
+                    mode: interview.mode,
+                    role: interview.role,
+                    experience: interview.experience,
+                    question: question.question,
+                    difficulty: question.difficulty,
+                    answer: cleanAnswer,
+                    timeLimitSec: question.timeLimitSec,
+                    timeTakenSec: timeTaken,
+                }),
+                evaluationAiSchema,
+            );
+        } catch (error) {
+            console.error("Evaluation AI failed:", error.message);
+            // claim wapas — warna question "answered" ban ke atak jaata, bina score ke
+            await Interview.updateOne(
+                { _id: interviewId, [`${path}.answer`]: cleanAnswer },
+                { $set: { [`${path}.answer`]: null }, $unset: { [`${path}.answeredAt`]: "" } },
+            );
+            throw new AppError(503, "AI is busy right now, please submit your answer again.", "AI_UNAVAILABLE");
+        }
+    }
+
+    // 3. scores save — sirf is question ke fields, baaki document ko nahi chhoote
+    await Interview.updateOne(
+        { _id: interviewId },
+        {
+            $set: {
+                [`${path}.scores`]: evaluation.scores,
+                [`${path}.feedback`]: evaluation.feedback,
+                [`${path}.timeTakenSec`]: timeTaken,
+            },
+        },
+    );
+
+    return { questionIndex, ...evaluation };
 };

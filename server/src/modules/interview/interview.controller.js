@@ -1,6 +1,6 @@
 import AppError from "../../utils/AppError.js";
 import { sendSuccess } from "../../utils/response.js";
-import { parseResume, startInterview } from "./interview.service.js";
+import { parseResume, startInterview, submitAnswer } from "./interview.service.js";
 
 // multer ne file req.file me daali hai (buffer = RAM me bytes). File hi na aaye to multer chup rehta hai — yaha check
 export const uploadResume = async (req, res) => {
@@ -15,4 +15,10 @@ export const uploadResume = async (req, res) => {
 export const startNewInterview = async (req, res) => {
     const result = await startInterview(req.userId, req.body);
     return sendSuccess(res, { status: 201, message: "Interview started", data: result });
+};
+
+// params.id + body dono validate() check kar chuka
+export const submitInterviewAnswer = async (req, res) => {
+    const result = await submitAnswer(req.userId, req.params.id, req.body);
+    return sendSuccess(res, { message: "Answer evaluated", data: result });
 };

@@ -17,23 +17,23 @@
 ### 0.1 Current focus
 | | |
 |---|---|
-| **Now** | Step 8: Submit & evaluate answer |
-| **Next** | Step 9: Finish + report + history API |
+| **Now** | Step 9: Finish + report + history API |
+| **Next** | Step 10: Interview Redux slice + API |
 | **Milestone** | 🎯 MVP (end of Stage 4): target **2026-10-22** |
-| **Last updated** | 2026-10-03 |
+| **Last updated** | 2026-10-04 |
 
 ### 0.2 Stage progress
 | Stage | Steps | Done | Progress | Target date | Status |
 |-------|-------|------|----------|-------------|--------|
 | 0. Foundation | — | ✅ | `██████████` 100% | 2026-09-29 | ✅ |
 | 1. Setup for growth | 1–4 (+2b) | 5/5 | `██████████` 100% | 2026-10-02 | ✅ |
-| 2. Interview backend | 5–9 | 3/5 | `██████░░░░` 60% | 2026-10-09 | 🟡 |
+| 2. Interview backend | 5–9 | 4/5 | `████████░░` 80% | 2026-10-09 | 🟡 |
 | 3. Interview frontend | 10–14 | 0/5 | `░░░░░░░░░░` 0% | 2026-10-17 | ⬜ |
 | 4. History & reports 🎯 MVP | 15–17 | 0/3 | `░░░░░░░░░░` 0% | 2026-10-22 | ⬜ |
 | 5. Payments | 18–20 | 0/3 | `░░░░░░░░░░` 0% | 2026-10-28 | ⬜ |
 | 6. Production & scale | 21–26 | 0/6 | `░░░░░░░░░░` 0% | 2026-11-06 | ⬜ |
 | 7. Differentiators | 27–33 | 0/7 | `░░░░░░░░░░` 0% | after launch | ⬜ |
-| **Total (Steps 1–26 + 2b)** | | **8/27** | `███░░░░░░░` 30% | | |
+| **Total (Steps 1–26 + 2b)** | | **9/27** | `███░░░░░░░` 33% | | |
 
 ### 0.3 Step board
 | # | Step | Area | Est. | Status | Started | Done | Notes |
@@ -44,9 +44,9 @@
 | 3 | Client API layer + ProtectedRoute + lazy pages | 🎨 | 0.5d | ✅ | 2026-09-30 | 2026-09-30 | `src/api/`, interceptor, `loading`, ProtectedRoute, lazy pages; 10/10 headless-Chrome checks |
 | 4 | Dev tooling (git, prettier, compress assets, README) | 🎨🖥️ | 0.5d | ✅ | 2026-09-30 | 2026-09-30 | Committed `d2f2c78` (incl. Prettier run) |
 | 5 | Interview model + MODES + prompts | 🖥️ | 0.5d | ✅ | 2026-09-30 | 2026-09-30 | model, modes, prompts, AI schemas, `askAiJson`; all prompts reviewed live on the free model |
-| 6 | Resume upload & parsing | 🖥️ | 1d | ✅ | 2026-10-01 | 2026-10-01 | `POST /api/interview/resume`; pdf-parse v2, first 5 pages, 12k chars; AI fail → 503. Not committed |
-| 7 | Start interview (atomic credits + questions) | 🖥️ | 1d | ✅ | 2026-10-03 | 2026-10-03 | `POST /api/interview/start`; idempotency key (`requestId` + unique index) → double-click charges once; refund on AI fail. Not committed |
-| 8 | Submit & evaluate answer | 🖥️ | 1d | ⬜ | | | |
+| 6 | Resume upload & parsing | 🖥️ | 1d | ✅ | 2026-10-01 | 2026-10-01 | `POST /api/interview/resume`; pdf-parse v2, first 5 pages, 12k chars; AI fail → 503. Committed `3a133a5` |
+| 7 | Start interview (atomic credits + questions) | 🖥️ | 1d | ✅ | 2026-10-03 | 2026-10-03 | `POST /api/interview/start`; idempotency key (`requestId` + unique index) → double-click charges once; refund on AI fail. Committed `3a133a5` |
+| 8 | Submit & evaluate answer | 🖥️ | 1d | ✅ | 2026-10-04 | 2026-10-04 | `POST /api/interview/:id/answer`; claim answer atomically first → 409 on double submit; 404 for others' interviews; AI fail → claim undone + 503. Not committed |
 | 9 | Finish + report + history API | 🖥️ | 1d | ⬜ | | | |
 | 10 | Interview Redux slice + API | 🎨 | 0.5d | ⬜ | | | |
 | 11 | Step 1: Setup screen | 🎨 | 1d | ⬜ | | | |
@@ -71,6 +71,8 @@ Newest first. Format: `date · who · step · what changed`.
 
 | Date | Who | Step | What |
 |------|-----|------|------|
+| 2026-10-04 | Claude | 8 | ✅ Step 8: `POST /api/interview/:id/answer` (isAuth → aiLimiter → validate params+body). Schemas: `interviewIdParamsSchema` (24-hex id), `submitAnswerSchema` (index 0–4, answer ≤5000 chars, empty allowed, timeTakenSec ≥0). Service `submitAnswer`: 1) atomic claim `findOneAndUpdate({_id,userId,status:in_progress, q.i exists, q.i.answer not a string})` 2) empty answer → all 0, no AI; else `askAiJson(evaluationPrompt)`; AI fail → undo claim + 503 3) save scores/feedback/timeTaken (capped at limit). Failed claim → `explainAnswerConflict` gives 404 / 409 `INTERVIEW_NOT_ACTIVE` / 409 `ALREADY_ANSWERED`. **Bug found in testing:** filter `"questions.3.answer": null` always matched (MongoDB reads `3` as index AND as a field name on each element → missing = null) → switched to `$not: {$type: "string"}`. Verified: 401, bad id/index/type/too long → 400; other user + random id → 404; completed → 409; empty → 0s; resubmit → 409; 2 parallel same question → one 200 + one 409; bad API key → 503 and answer reset, retry → 200; timeTakenSec 9999 → 60. Test users deleted. `npm run check` passes. Not committed. |
+| 2026-10-04 | You | 6, 7 | ✅ Committed Steps 6 + 7 (`31936b4`, `3a133a5`). |
 | 2026-10-03 | Claude | 7 | ✅ Step 7: `POST /api/interview/start` (isAuth → aiLimiter → validate). New `interview.schema.js` (role, experience enum, mode enum, optional resume, `requestId` UUID). Model: `requestId` + unique index `{userId, requestId}`, new status `starting` (default). Service order: 1) create interview (reserve; E11000 → duplicate: `starting` → 409 `INTERVIEW_STARTING`, done → same interview, no charge) 2) atomic `$gte`/`$inc` credit (none → delete reserve, 402 `NOT_ENOUGH_CREDITS`) 3) `askAiJson` questions, difficulty/time from `QUESTION_PLAN` 4) save `in_progress` → 201. Any fail after charge → refund + delete reserve (503 `AI_UNAVAILABLE`). Verified on test servers: 401/400s; double click same requestId → 201 + 409, credit 100→50, 1 interview; replay → same id; 0 credits → 402; 50 credits + 2 parallel different ids → one 201, one 402; bad API key → 503 + full refund, then retry same requestId → 201. Test users deleted. `npm run check` passes. Not committed. |
 | 2026-10-01 | Claude | 6 | ✅ Step 6: `npm i pdf-parse` (v2), `interview.service.js` (`parseResume`: text from first 5 pages, <50 chars → 400 `RESUME_NO_TEXT`, unreadable → 400 `INVALID_PDF`, trim 12k, `askAiJson` → AI fail = 503 `AI_UNAVAILABLE`), controller (no file → 400 `RESUME_MISSING`), `interview.routes.js` (isAuth → aiLimiter → upload.single), mounted `/api/interview`. Verified with a fake test resume: no login 401, no file / .docx / 6 MB / broken PDF / docx renamed as PDF / wrong field → 400; real PDF → 200 with correct skills + 2 projects (~20 s on free model; once got 3× OpenRouter 504 → clean 503). `npm run check` passes. Not committed. |
 | 2026-09-30 | Claude | 5 | ✅ Step 5: `interview.modes.js` (MODES with focus, rubric, weights; plan; time limits; experience levels), `interview.model.js`, `interview.prompts.js` (4 prompts, data-in-tags anti-injection), `interview.ai-schemas.js`, `askAiJson` + fallback models (env `OPENROUTER_FALLBACK_MODELS`). Live review on free model: resume parse ignored injected line; questions used candidate's projects; good/weak/cheat answers scored 8/2/0; report specific; model validates. `npm run check` passes. Not committed. |
@@ -469,11 +471,11 @@ Own passwords with bcrypt (not Firebase email auth) — chosen to learn hashing.
 **✅ Done when:** credits drop by `cost`, a user with 0 credits gets 402, and forcing an AI error (bad API key) refunds the credits.
 
 #### Step 8 🖥️ Submit & evaluate an answer ⏱️ 1 day
-- [ ] `POST /api/interview/:id/answer` with body `{ questionIndex, answer, timeTakenSec }`
-- [ ] Owner check (`interview.userId === req.userId`), status must be `in_progress`, and the question must not already be answered
-- [ ] Empty or skipped answer: score 0 without calling the AI
-- [ ] `askAi` returns `{ scores: { communication, content, technical, confidence }, feedback }` (0–10)
-- [ ] Save into `questions[i]`, then return the evaluation
+- [x] `POST /api/interview/:id/answer` with body `{ questionIndex, answer, timeTakenSec }`
+- [x] Owner check (`interview.userId === req.userId`), status must be `in_progress`, and the question must not already be answered
+- [x] Empty or skipped answer: score 0 without calling the AI
+- [x] `askAi` returns `{ scores: { communication, content, technical, confidence }, feedback }` (0–10)
+- [x] Save into `questions[i]`, then return the evaluation
 
 **✅ Done when:** answers are scored, another user's interview returns 404, and submitting twice returns 409.
 
