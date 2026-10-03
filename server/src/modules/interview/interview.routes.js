@@ -3,8 +3,20 @@ import isAuth from "../../middlewares/isAuth.js";
 import { aiLimiter } from "../../middlewares/rateLimit.js";
 import upload from "../../middlewares/upload.js";
 import validate from "../../middlewares/validate.js";
-import { interviewIdParamsSchema, startInterviewSchema, submitAnswerSchema } from "./interview.schema.js";
-import { startNewInterview, submitInterviewAnswer, uploadResume } from "./interview.controller.js";
+import {
+    historyQuerySchema,
+    interviewIdParamsSchema,
+    startInterviewSchema,
+    submitAnswerSchema,
+} from "./interview.schema.js";
+import {
+    finishCurrentInterview,
+    getInterviewById,
+    getInterviewHistory,
+    startNewInterview,
+    submitInterviewAnswer,
+    uploadResume,
+} from "./interview.controller.js";
 
 const interviewRouter = express.Router();
 
@@ -22,5 +34,18 @@ interviewRouter.post(
     validate({ params: interviewIdParamsSchema, body: submitAnswerSchema }),
     submitInterviewAnswer,
 );
+
+// sirf finish AI call karta hai → aiLimiter. GET routes par global limiter kaafi hai
+interviewRouter.post(
+    "/:id/finish",
+    isAuth,
+    aiLimiter,
+    validate({ params: interviewIdParamsSchema }),
+    finishCurrentInterview,
+);
+
+// "/history" ko "/:id" se PEHLE rakho — warna Express "history" ko hi id samajh leta
+interviewRouter.get("/history", isAuth, validate({ query: historyQuerySchema }), getInterviewHistory);
+interviewRouter.get("/:id", isAuth, validate({ params: interviewIdParamsSchema }), getInterviewById);
 
 export default interviewRouter;

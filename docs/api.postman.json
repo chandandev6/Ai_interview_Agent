@@ -1,0 +1,305 @@
+{
+  "info": {
+    "name": "InterviewIQ.AI API",
+    "description": "Full interview flow: login \u2192 resume \u2192 start \u2192 5 answers \u2192 finish \u2192 report \u2192 history.\nSet `email` and `password` (a verified email/password account). Postman keeps the `token` cookie after login automatically.\nAI routes are limited to 10 requests/min per user.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "email",
+      "value": "you@example.com"
+    },
+    {
+      "key": "password",
+      "value": "your-password"
+    },
+    {
+      "key": "interviewId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["health"]
+        },
+        "description": ""
+      }
+    },
+    {
+      "name": "1. Login (email + password)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "login"]
+        },
+        "description": "Sets the httpOnly `token` cookie.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"email\": \"{{email}}\",\n    \"password\": \"{{password}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "2. Current user",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/user/current-user",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "user", "current-user"]
+        },
+        "description": "Check login + credits."
+      }
+    },
+    {
+      "name": "3. Upload resume (optional)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/interview/resume",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "interview", "resume"]
+        },
+        "description": "Pick a text-based PDF (max 5 MB) in the `resume` field. Copy `data.resume` into the Start body if you want resume-based questions.",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "resume",
+              "type": "file",
+              "src": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "4. Start interview",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/interview/start",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "interview", "start"]
+        },
+        "description": "Costs 50 credits. mode: hr | technical | confidence. requestId = new UUID per attempt ({{$guid}}).",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"role\": \"Frontend Developer\",\n    \"experience\": \"1-3 years\",\n    \"mode\": \"technical\",\n    \"requestId\": \"{{$guid}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "if (body.success) pm.collectionVariables.set('interviewId', body.data.interviewId);",
+              "pm.test('201 Created', () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Answer question 0",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/interview/{{interviewId}}/answer",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "interview", "{{interviewId}}", "answer"]
+        },
+        "description": "Scores one answer. Same question twice \u2192 409 ALREADY_ANSWERED.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"questionIndex\": 0,\n    \"answer\": \"Type your answer here (empty string = skip).\",\n    \"timeTakenSec\": 30\n}"
+        }
+      }
+    },
+    {
+      "name": "5. Answer question 1",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/interview/{{interviewId}}/answer",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "interview", "{{interviewId}}", "answer"]
+        },
+        "description": "Scores one answer. Same question twice \u2192 409 ALREADY_ANSWERED.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"questionIndex\": 1,\n    \"answer\": \"Type your answer here (empty string = skip).\",\n    \"timeTakenSec\": 30\n}"
+        }
+      }
+    },
+    {
+      "name": "5. Answer question 2",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/interview/{{interviewId}}/answer",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "interview", "{{interviewId}}", "answer"]
+        },
+        "description": "Scores one answer. Same question twice \u2192 409 ALREADY_ANSWERED.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"questionIndex\": 2,\n    \"answer\": \"Type your answer here (empty string = skip).\",\n    \"timeTakenSec\": 30\n}"
+        }
+      }
+    },
+    {
+      "name": "5. Answer question 3",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/interview/{{interviewId}}/answer",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "interview", "{{interviewId}}", "answer"]
+        },
+        "description": "Scores one answer. Same question twice \u2192 409 ALREADY_ANSWERED.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"questionIndex\": 3,\n    \"answer\": \"Type your answer here (empty string = skip).\",\n    \"timeTakenSec\": 30\n}"
+        }
+      }
+    },
+    {
+      "name": "5. Answer question 4",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/interview/{{interviewId}}/answer",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "interview", "{{interviewId}}", "answer"]
+        },
+        "description": "Scores one answer. Same question twice \u2192 409 ALREADY_ANSWERED.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"questionIndex\": 4,\n    \"answer\": \"Type your answer here (empty string = skip).\",\n    \"timeTakenSec\": 30\n}"
+        }
+      }
+    },
+    {
+      "name": "6. Finish interview",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/interview/{{interviewId}}/finish",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "interview", "{{interviewId}}", "finish"]
+        },
+        "description": "Calculates scores in code + AI summary. Already completed \u2192 same report. Answer still being graded \u2192 409."
+      }
+    },
+    {
+      "name": "7. Get interview (report)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/interview/{{interviewId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "interview", "{{interviewId}}"]
+        },
+        "description": "Owner only (others get 404)."
+      }
+    },
+    {
+      "name": "8. History",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/interview/history?page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "interview", "history"],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            }
+          ]
+        },
+        "description": "Newest first, no questions array. limit max 50."
+      }
+    },
+    {
+      "name": "9. Logout",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/logout",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "logout"]
+        },
+        "description": ""
+      }
+    }
+  ]
+}

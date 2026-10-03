@@ -17,8 +17,8 @@
 ### 0.1 Current focus
 | | |
 |---|---|
-| **Now** | Step 9: Finish + report + history API |
-| **Next** | Step 10: Interview Redux slice + API |
+| **Now** | Step 10: Interview Redux slice + API |
+| **Next** | Step 11: Setup screen |
 | **Milestone** | 🎯 MVP (end of Stage 4): target **2026-10-22** |
 | **Last updated** | 2026-10-04 |
 
@@ -27,13 +27,13 @@
 |-------|-------|------|----------|-------------|--------|
 | 0. Foundation | — | ✅ | `██████████` 100% | 2026-09-29 | ✅ |
 | 1. Setup for growth | 1–4 (+2b) | 5/5 | `██████████` 100% | 2026-10-02 | ✅ |
-| 2. Interview backend | 5–9 | 4/5 | `████████░░` 80% | 2026-10-09 | 🟡 |
+| 2. Interview backend | 5–9 | 5/5 | `██████████` 100% | 2026-10-09 | ✅ |
 | 3. Interview frontend | 10–14 | 0/5 | `░░░░░░░░░░` 0% | 2026-10-17 | ⬜ |
 | 4. History & reports 🎯 MVP | 15–17 | 0/3 | `░░░░░░░░░░` 0% | 2026-10-22 | ⬜ |
 | 5. Payments | 18–20 | 0/3 | `░░░░░░░░░░` 0% | 2026-10-28 | ⬜ |
 | 6. Production & scale | 21–26 | 0/6 | `░░░░░░░░░░` 0% | 2026-11-06 | ⬜ |
 | 7. Differentiators | 27–33 | 0/7 | `░░░░░░░░░░` 0% | after launch | ⬜ |
-| **Total (Steps 1–26 + 2b)** | | **9/27** | `███░░░░░░░` 33% | | |
+| **Total (Steps 1–26 + 2b)** | | **10/27** | `████░░░░░░` 37% | | |
 
 ### 0.3 Step board
 | # | Step | Area | Est. | Status | Started | Done | Notes |
@@ -47,7 +47,7 @@
 | 6 | Resume upload & parsing | 🖥️ | 1d | ✅ | 2026-10-01 | 2026-10-01 | `POST /api/interview/resume`; pdf-parse v2, first 5 pages, 12k chars; AI fail → 503. Committed `3a133a5` |
 | 7 | Start interview (atomic credits + questions) | 🖥️ | 1d | ✅ | 2026-10-03 | 2026-10-03 | `POST /api/interview/start`; idempotency key (`requestId` + unique index) → double-click charges once; refund on AI fail. Committed `3a133a5` |
 | 8 | Submit & evaluate answer | 🖥️ | 1d | ✅ | 2026-10-04 | 2026-10-04 | `POST /api/interview/:id/answer`; claim answer atomically first → 409 on double submit; 404 for others' interviews; AI fail → claim undone + 503. Not committed |
-| 9 | Finish + report + history API | 🖥️ | 1d | ⬜ | | | |
+| 9 | Finish + report + history API | 🖥️ | 1d | ✅ | 2026-10-04 | 2026-10-04 | finish (claim → `finishing`, scores in code, AI text), `GET /:id`, `GET /history` (paged, lean, projection); `docs/api.postman.json`. Not committed |
 | 10 | Interview Redux slice + API | 🎨 | 0.5d | ⬜ | | | |
 | 11 | Step 1: Setup screen | 🎨 | 1d | ⬜ | | | |
 | 12 | Step 2: Live interview (voice, avatar, timer) | 🎨 | 2–3d | ⬜ | | | Core feature |
@@ -71,6 +71,7 @@ Newest first. Format: `date · who · step · what changed`.
 
 | Date | Who | Step | What |
 |------|-----|------|------|
+| 2026-10-04 | Claude | 9 | ✅ Step 9: new status `finishing`. `POST /:id/finish` (isAuth → aiLimiter → validate params): atomic claim `in_progress → finishing` only if no answer is claimed-but-unscored (`$not $elemMatch {answer string, scores missing}`); failed claim → 404 / completed → same report (200) / 409 `INTERVIEW_FINISHING` / 409 `ANSWER_BEING_EVALUATED` / 409 `INTERVIEW_NOT_ACTIVE`. `calculateScores`: per-criterion averages (unanswered = 0, 1 decimal) + weighted overall ×10 with mode weights. Zero answers → fixed text, no AI; else `askAiJson(reportPrompt)`. Any fail → back to `in_progress` (503). `GET /:id` owner-only (hides userId/requestId). `GET /history?page&limit` (limit ≤50): excludes `starting`, `.lean()`, light projection, sort createdAt desc, `Promise.all` with count. Route `/history` before `/:id`. `docs/api.postman.json` (login → resume → start (saves interviewId) → 5 answers → finish → get → history). Verified: 401/400; other user 404 (finish + get); `starting` → 409; pending answer → 409; zero answers → fixed report; finish again → same report; AI down → 503 + back to in_progress; full flow overall 43 = hand calc (4.4/4.0/4.4/4.4, technical weights); 2 parallel finish → 200 + 409; answer after complete → 409; history order/paging/no questions/limit=100, page=0, page=abc → 400; other user empty list. aiLimiter 429 seen during testing (expected). Test data deleted. `npm run check` passes. Not committed. |
 | 2026-10-04 | Claude | 8 | ✅ Step 8: `POST /api/interview/:id/answer` (isAuth → aiLimiter → validate params+body). Schemas: `interviewIdParamsSchema` (24-hex id), `submitAnswerSchema` (index 0–4, answer ≤5000 chars, empty allowed, timeTakenSec ≥0). Service `submitAnswer`: 1) atomic claim `findOneAndUpdate({_id,userId,status:in_progress, q.i exists, q.i.answer not a string})` 2) empty answer → all 0, no AI; else `askAiJson(evaluationPrompt)`; AI fail → undo claim + 503 3) save scores/feedback/timeTaken (capped at limit). Failed claim → `explainAnswerConflict` gives 404 / 409 `INTERVIEW_NOT_ACTIVE` / 409 `ALREADY_ANSWERED`. **Bug found in testing:** filter `"questions.3.answer": null` always matched (MongoDB reads `3` as index AND as a field name on each element → missing = null) → switched to `$not: {$type: "string"}`. Verified: 401, bad id/index/type/too long → 400; other user + random id → 404; completed → 409; empty → 0s; resubmit → 409; 2 parallel same question → one 200 + one 409; bad API key → 503 and answer reset, retry → 200; timeTakenSec 9999 → 60. Test users deleted. `npm run check` passes. Not committed. |
 | 2026-10-04 | You | 6, 7 | ✅ Committed Steps 6 + 7 (`31936b4`, `3a133a5`). |
 | 2026-10-03 | Claude | 7 | ✅ Step 7: `POST /api/interview/start` (isAuth → aiLimiter → validate). New `interview.schema.js` (role, experience enum, mode enum, optional resume, `requestId` UUID). Model: `requestId` + unique index `{userId, requestId}`, new status `starting` (default). Service order: 1) create interview (reserve; E11000 → duplicate: `starting` → 409 `INTERVIEW_STARTING`, done → same interview, no charge) 2) atomic `$gte`/`$inc` credit (none → delete reserve, 402 `NOT_ENOUGH_CREDITS`) 3) `askAiJson` questions, difficulty/time from `QUESTION_PLAN` 4) save `in_progress` → 201. Any fail after charge → refund + delete reserve (503 `AI_UNAVAILABLE`). Verified on test servers: 401/400s; double click same requestId → 201 + 409, credit 100→50, 1 interview; replay → same id; 0 credits → 402; 50 credits + 2 parallel different ids → one 201, one 402; bad API key → 503 + full refund, then retry same requestId → 201. Test users deleted. `npm run check` passes. Not committed. |
@@ -112,6 +113,7 @@ Newest first. Format: `date · who · step · what changed`.
 | 2026-09-30 | Decision | Interview: 50 credits (all modes), 5 questions (easy, easy, medium, medium, hard), time limits 60/90/120 s, resume optional, follow-up questions later (Stage 7) | ✅ Decided |
 | 2026-10-03 | Decision | Double-click on Start: server idempotency key (`requestId` UUID per attempt + unique index, reserve → charge → AI → refund on fail). Frontend disabled button in Step 11. "One active interview per user" later (Stage 7) | ✅ Decided |
 | 2026-10-03 | Known gap | If the server crashes mid-start (after charging, before refund), the interview stays `starting` and credits are lost. Fix later: cleanup job refunds `starting` interviews older than ~5 min (Stage 6, with the queue) | ⏭️ Later |
+| 2026-10-04 | Known gap | Same as start: crash during finish leaves the interview stuck in `finishing`. Same cleanup job (Stage 6) should reset `finishing` older than ~5 min back to `in_progress` | ⏭️ Later |
 | 2026-09-30 | Action | Fix `MAIL_FROM` in `server/.env` to `InterviewIQ <you@gmail.com>` format | ⬜ Owner: you |
 
 ---
@@ -480,10 +482,10 @@ Own passwords with bcrypt (not Firebase email auth) — chosen to learn hashing.
 **✅ Done when:** answers are scored, another user's interview returns 404, and submitting twice returns 409.
 
 #### Step 9 🖥️ Finish interview + report, get by id ⏱️ 1 day
-- [ ] `POST /api/interview/:id/finish`: compute the average scores in code (not the AI), then `askAi` for strengths, weaknesses and improvements. Set `status: "completed"`.
-- [ ] `GET /api/interview/:id`: the full report, owner only
-- [ ] `GET /api/interview/history?page=1&limit=10`: `.lean()`, projection (no questions array), sorted newest first
-- [ ] Test the whole flow with Postman or Thunder Client and save the collection in the repo (`/docs/api.postman.json`)
+- [x] `POST /api/interview/:id/finish`: compute the average scores in code (not the AI), then `askAi` for strengths, weaknesses and improvements. Set `status: "completed"`.
+- [x] `GET /api/interview/:id`: the full report, owner only
+- [x] `GET /api/interview/history?page=1&limit=10`: `.lean()`, projection (no questions array), sorted newest first
+- [x] Test the whole flow with Postman or Thunder Client and save the collection in the repo (`/docs/api.postman.json`)
 
 **✅ Done when:** the full flow resume → start → 5 answers → finish works through Postman.
 

@@ -4,8 +4,8 @@ import { askAiJson } from "../../lib/ai/openRouter.js";
 import User from "../user/user.model.js";
 import Interview from "./interview.model.js";
 import { CRITERIA, MODES, QUESTION_PLAN, TIME_LIMITS } from "./interview.modes.js";
-import { evaluationPrompt, questionsPrompt, resumePrompt } from "./interview.prompts.js";
-import { evaluationAiSchema, questionsAiSchema, resumeAiSchema } from "./interview.ai-schemas.js";
+import { evaluationPrompt, questionsPrompt, reportPrompt, resumePrompt } from "./interview.prompts.js";
+import { evaluationAiSchema, questionsAiSchema, reportAiSchema, resumeAiSchema } from "./interview.ai-schemas.js";
 
 const RESUME_MAX_PAGES = 5; // resume 1-2 page ka hota hai — 300 page ka PDF server ko busy na kare
 const RESUME_MAX_CHARS = 12000; // AI ko itna hi bhejo — zyada text = zyada tokens = zyada paisa/time
@@ -211,4 +211,137 @@ export const submitAnswer = async (userId, interviewId, { questionIndex, answer,
     );
 
     return { questionIndex, ...evaluation };
+};
+
+// client ko poora interview dikhate waqt ye internal fields nahi bhejte
+const INTERVIEW_VIEW = "-userId -requestId -__v";
+
+// numbers CODE nikalta hai, AI nahi — AI maths me kachcha hai aur har baar alag number de sakta hai
+// bina jawab wala question = 0 (beech me chhod ke jaane se score badhna nahi chahiye)
+const calculateScores = (questions, weights) => {
+    const averages = Object.fromEntries(
+        CRITERIA.map((key) => {
+            const total = questions.reduce((sum, q) => sum + (q.scores?.[key] ?? 0), 0);
+            return [key, Math.round((total / questions.length) * 10) / 10]; // 1 decimal: 6.4
+        }),
+    );
+    // weighted average (0-10) → 0-100. Har mode ke weights alag (technical me "technical" sabse bhaari)
+    const overallScore = Math.round(CRITERIA.reduce((sum, key) => sum + averages[key] * weights[key], 0) * 10);
+    return { averages, overallScore };
+};
+
+// finish ka claim fail hua — kyun?
+const resolveFinishConflict = async (userId, interviewId) => {
+    const interview = await Interview.findOne({ _id: interviewId, userId }).select(INTERVIEW_VIEW).lean();
+    if (!interview) throw new AppError(404, "Interview not found.", "INTERVIEW_NOT_FOUND");
+    // pehle hi complete — retry (network glitch) ko error nahi, wahi report do
+    if (interview.status === "completed") return interview;
+    if (interview.status === "finishing") {
+        throw new AppError(409, "Your report is already being prepared. Please wait.", "INTERVIEW_FINISHING");
+    }
+    if (interview.status === "in_progress") {
+        // in_progress hai phir bhi claim fail = koi answer abhi AI check kar raha hai
+        throw new AppError(
+            409,
+            "Your last answer is still being evaluated. Please try again in a moment.",
+            "ANSWER_BEING_EVALUATED",
+        );
+    }
+    throw new AppError(409, "This interview is not in progress.", "INTERVIEW_NOT_ACTIVE");
+};
+
+// order: 1) claim (in_progress → finishing)  2) scores code se  3) AI text  4) save completed. Fail → wapas in_progress
+export const finishInterview = async (userId, interviewId) => {
+    // 1. claim — double "Finish" ki doosri request yahi ruk jaati hai, aur finishing ke baad Step 8 naya answer nahi leta
+    const interview = await Interview.findOneAndUpdate(
+        {
+            _id: interviewId,
+            userId,
+            status: "in_progress",
+            // koi answer claim hua par score nahi aaya (AI abhi check kar raha) → abhi finish nahi, warna wo 0 ginta
+            questions: { $not: { $elemMatch: { answer: { $type: "string" }, scores: { $exists: false } } } },
+        },
+        { $set: { status: "finishing" } },
+        { returnDocument: "after" },
+    );
+    if (!interview) return resolveFinishConflict(userId, interviewId);
+
+    try {
+        // 2. numbers
+        const { averages, overallScore } = calculateScores(interview.questions, MODES[interview.mode].weights);
+
+        // 3. text — ek bhi jawab nahi diya to AI ka paisa kyun kharch karein
+        let summary;
+        if (!interview.questions.some((q) => q.answer)) {
+            summary = {
+                strengths: ["You started the interview — that is the first step."],
+                weaknesses: ["No questions were answered, so we could not evaluate your skills."],
+                improvements: [
+                    "Try again and answer every question, even briefly — a short attempt scores better than silence.",
+                ],
+            };
+        } else {
+            try {
+                summary = await askAiJson(
+                    reportPrompt({
+                        mode: interview.mode,
+                        role: interview.role,
+                        experience: interview.experience,
+                        overallScore,
+                        questions: interview.questions,
+                    }),
+                    reportAiSchema,
+                );
+            } catch (error) {
+                console.error("Report AI failed:", error.message);
+                throw new AppError(503, "AI is busy right now, please click Finish again.", "AI_UNAVAILABLE");
+            }
+        }
+
+        // 4. save — status: finishing wali shart, taaki galti se kisi aur state ko overwrite na karein
+        return await Interview.findOneAndUpdate(
+            { _id: interviewId, status: "finishing" },
+            {
+                $set: {
+                    status: "completed",
+                    completedAt: new Date(),
+                    report: { overallScore, averages, ...summary },
+                },
+            },
+            { returnDocument: "after", projection: INTERVIEW_VIEW, lean: true },
+        );
+    } catch (error) {
+        // claim wapas — user dobara "Finish" daba sake
+        await Interview.updateOne({ _id: interviewId, status: "finishing" }, { $set: { status: "in_progress" } });
+        throw error;
+    }
+};
+
+// ek interview (report page) — sirf owner. Kisi aur ka = 404
+export const getInterview = async (userId, interviewId) => {
+    const interview = await Interview.findOne({ _id: interviewId, userId }).select(INTERVIEW_VIEW).lean();
+    if (!interview) throw new AppError(404, "Interview not found.", "INTERVIEW_NOT_FOUND");
+    return interview;
+};
+
+// list ke liye sirf halke fields — questions/resume (sabse bhaari) nahi
+const HISTORY_FIELDS = "role experience mode status creditsUsed report.overallScore createdAt completedAt";
+
+// history, newest first, page by page. Index { userId, createdAt: -1 } se filter + sort dono fast
+export const getHistory = async (userId, { page, limit }) => {
+    // "starting" = Step 7 ka reserve, asli interview nahi
+    const filter = { userId, status: { $ne: "starting" } };
+
+    // dono query ek saath chalao (ek ke baad ek nahi) — .lean() = plain object, sirf padhna hai to tez + kam memory
+    const [items, total] = await Promise.all([
+        Interview.find(filter)
+            .sort({ createdAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(limit)
+            .select(HISTORY_FIELDS)
+            .lean(),
+        Interview.countDocuments(filter),
+    ]);
+
+    return { items, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
 };

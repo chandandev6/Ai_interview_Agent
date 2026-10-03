@@ -34,3 +34,10 @@ export const submitAnswerSchema = z.object({
     answer: z.string({ error: "answer must be a string" }).max(5000, "Answer is too long").default(""),
     timeTakenSec: z.number({ error: "timeTakenSec must be a number" }).min(0).default(0),
 });
+
+// GET /history?page=2&limit=10 — query me sab string aata hai ("2"), coerce use number banata hai
+export const historyQuerySchema = z.object({
+    page: z.coerce.number().int().min(1, "page must be 1 or more").default(1),
+    // max 50 — koi limit=100000 bhej ke poora DB ek request me na maang le
+    limit: z.coerce.number().int().min(1).max(50, "limit must be at most 50").default(10),
+});
