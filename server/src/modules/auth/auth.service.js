@@ -6,6 +6,7 @@ import AppError from "../../utils/AppError.js";
 import { sendMail } from "../../lib/mail/mailer.js";
 import User from "../user/user.model.js";
 import { findOrCreateGoogleUser, toSafeUser } from "../user/user.service.js";
+import { recordSignupBonus } from "../credit/credit.service.js";
 import { verificationEmail, passwordResetEmail } from "./auth.emails.js";
 
 const BCRYPT_ROUNDS = 12; // 2^12 rounds ≈ 0.2s per hash — user ko pata nahi chalta, attacker ke liye bahut slow
@@ -96,6 +97,7 @@ export const registerUser = async ({ name, email, password }) => {
         if (error.code === 11000) throw new AppError(409, "An account with this email already exists. Please log in.");
         throw error;
     }
+    if (!existing) await recordSignupBonus(user); // naya account — welcome credits ki ledger row
 
     return { email: user.email };
 };

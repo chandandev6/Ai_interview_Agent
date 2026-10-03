@@ -17,8 +17,8 @@
 ### 0.1 Current focus
 | | |
 |---|---|
-| **Now** | 🎯 MVP done → Step 25: deploy a beta (PRD says deploy now) |
-| **Next** | Step 18: Transaction ledger (Stage 5) |
+| **Now** | You: add Razorpay test keys + webhook, do one real test payment |
+| **Next** | Stage 6: Step 21 logging & monitoring (or Step 25 deploy a beta) |
 | **Milestone** | 🎯 MVP (end of Stage 4): target **2026-10-22** |
 | **Last updated** | 2026-10-04 |
 
@@ -30,10 +30,10 @@
 | 2. Interview backend | 5–9 | 5/5 | `██████████` 100% | 2026-10-09 | ✅ |
 | 3. Interview frontend | 10–14 | 5/5 | `██████████` 100% | 2026-10-17 | ✅ |
 | 4. History & reports 🎯 MVP | 15–17 | 3/3 | `██████████` 100% | 2026-10-22 | ✅ |
-| 5. Payments | 18–20 | 0/3 | `░░░░░░░░░░` 0% | 2026-10-28 | ⬜ |
+| 5. Payments | 18–20 | 3/3 | `██████████` 100% | 2026-10-28 | ✅ |
 | 6. Production & scale | 21–26 | 0/6 | `░░░░░░░░░░` 0% | 2026-11-06 | ⬜ |
 | 7. Differentiators | 27–33 | 0/7 | `░░░░░░░░░░` 0% | after launch | ⬜ |
-| **Total (Steps 1–26 + 2b)** | | **18/27** | `███████░░░` 67% | | |
+| **Total (Steps 1–26 + 2b)** | | **21/27** | `████████░░` 78% | | |
 
 ### 0.3 Step board
 | # | Step | Area | Est. | Status | Started | Done | Notes |
@@ -54,11 +54,11 @@
 | 13 | Step 3: Report screen | 🎨 | 1d | ✅ | 2026-10-04 | 2026-10-04 | `/report/:id` page; PDF button → Step 17, History button → Step 15 |
 | 14 | End-to-end polish | 🎨🖥️ | 1d | ✅ | 2026-10-04 | 2026-10-04 | react-hot-toast, skeleton, retry buttons, low-credit banner, mobile Navbar fix. Committed `584e6d4` |
 | 15 | History page | 🎨 | 1d | ✅ | 2026-10-04 | 2026-10-04 | cards, mode tabs (server `?mode=`), Load more, Continue for in-progress, empty/skeleton/error. Committed `c75f76e` |
-| 16 | Analytics (charts + stats API) | 🎨🖥️ | 1d | ✅ | 2026-10-04 | 2026-10-04 | `GET /stats` ($facet aggregation), KPI tiles + recharts trend (lazy) + skill bars + by mode on /history. Not committed |
+| 16 | Analytics (charts + stats API) | 🎨🖥️ | 1d | ✅ | 2026-10-04 | 2026-10-04 | `GET /stats` ($facet aggregation), KPI tiles + recharts trend (lazy) + skill bars + by mode on /history. Committed `b9fefd8` |
 | 17 | Report page + PDF download | 🎨 | 1d | ✅ | 2026-10-04 | 2026-10-04 | `utils/reportPdf.js` (jspdf + autotable, lazy-loaded, Latin-1 text cleanup). Committed `c75f76e` |
-| 18 | Transaction ledger | 🖥️ | 0.5d | ⬜ | | | |
-| 19 | Pricing + payment gateway + webhook | 🖥️🎨 | 2d | ⬜ | | | |
-| 20 | Account page | 🎨 | 0.5d | ⬜ | | | |
+| 18 | Transaction ledger | 🖥️ | 0.5d | ✅ | 2026-10-04 | 2026-10-04 | `modules/credit`: Transaction model, charge/add in a MongoDB transaction, signup bonus row, `GET /api/credits/transactions`. Not committed |
+| 19 | Pricing + payment gateway + webhook | 🖥️🎨 | 2d | ✅ | 2026-10-04 | 2026-10-04 | Razorpay: plans, order, verify (HMAC), idempotent webhook, `/pricing`. Real test payment pending (needs your keys). Not committed |
+| 20 | Account page | 🎨 | 0.5d | ✅ | 2026-10-04 | 2026-10-04 | `/account`: profile, balance, credit history, logout. Not committed |
 | 21 | Logging & monitoring (pino, Sentry) | 🖥️ | 0.5d | ⬜ | | | |
 | 22 | Redis (rate limit store, cache) | 🖥️ | 1d | ⬜ | | | |
 | 23 | Background queue (BullMQ worker) | 🖥️ | 1–2d | ⬜ | | | |
@@ -71,6 +71,8 @@ Newest first. Format: `date · who · step · what changed`.
 
 | Date | Who | Step | What |
 |------|-----|------|------|
+| 2026-10-04 | Claude | 18–20 | ✅ Stage 5 Payments (you chose Razorpay, no keys yet → tested with self-made signatures). **Ledger (Step 18):** `modules/credit/` — `Transaction` {userId, type signup_bonus/interview/refund/purchase, amount ±, balanceAfter, interviewId?, paymentId?, note}; indexes {userId, createdAt}, unique paymentId (partial), one signup_bonus per user (partial unique). `credit.service`: `chargeCredits` ($gte/$inc + ledger row) and `addCredits` in `mongoose.connection.transaction()` (Atlas); `recordSignupBonus` on Google signup + register; `GET /api/credits/transactions` (paged). Interview start/refund now use it. **Razorpay (Step 19):** `npm i razorpay`; env RAZORPAY_KEY_ID/SECRET/WEBHOOK_SECRET optional (empty → payments disabled, 503 PAYMENTS_DISABLED; placeholders appended to server/.env); `lib/payment/razorpay.js` (HMAC-SHA256 + timingSafeEqual); `modules/payment/`: plans in code (Starter 500/₹99, Pro 1500/₹249, Max 4000/₹599 — server sets price), `Payment` model (one row per order, status created/paid/failed), `GET /plans` (public), `POST /order`, `POST /verify` (signature of order_id|payment_id + owner check), `POST /webhook` (raw body before express.json, signature header, payment.captured/order.paid with amount check, payment.failed). Single `fulfillOrder` used by both: claim order `status ≠ paid → paid` + $inc credit + purchase row in one transaction → idempotent. **Client:** `/pricing` (plan cards, per-interview price, Razorpay checkout script lazy-loaded, verify → setCredit → /account; verify failure → "credits in a minute" because webhook covers it), `/account` (profile, balance + refresh, credit history with Load more, logout), Navbar "Account & credits" link, Buy-more popup closes. **Bug fixed:** logout on a private page went to /auth (React Router applies navigation in a transition, Redux null renders first) → new `logout` action + `loggedOut` flag, ProtectedRoute sends to home. **Verified (fake keys):** plans on/off; order 401/400/502 (fake keys)/503 (disabled); verify bad sig 400, other user 404, ok +1500, repeat → alreadyProcessed; webhook no/wrong sig 400, ok, duplicate → no credit, then verify → alreadyProcessed; **6 parallel verify+webhook → credited once**; amount mismatch ignored; failed → later captured → paid; AI-down start → ledger −50/+50, 402 → no row; register → one signup_bonus row (retry → none); balance 100+1500+500+4000+500 = 6600 ✓. Browser (Razorpay stubbed, order API intercepted, real verify): Navbar → Pricing → Buy Pro → credits 30→1530 in Navbar + Account row, mobile OK, logout → home, no console errors. Server boots with real .env (payments disabled). **Not tested:** real Razorpay popup / real webhook (needs your keys + public URL). Test data deleted. `npm run check` passes. Not committed. |
+| 2026-10-04 | You | 16 | ✅ Committed (`b9fefd8`). |
 | 2026-10-04 | Claude | 16 | ✅ Analytics → **MVP feature-complete**. **Backend:** `GET /api/interview/stats` (isAuth, before `/:id`): one aggregation — `$match` userId (manual `new ObjectId()` because aggregate() doesn't cast like find()) + completed → `$facet` {summary: count/avg/best + 4 skill avgs, byMode: count/avg/best per mode, trend: last 20 by completedAt}, `$round` to 1 decimal in DB; code reverses trend and adds latestScore + change vs previous. **Client:** `npm i recharts`; `components/history/Analytics.jsx` on top of /history (skeleton, hidden for 0 completed, silently hidden if API fails): 4 KPI tiles (latest with ↑/↓ + sign), trend card (lazy `ScoreTrendChart.jsx` → recharts in its own chunk; single-series area, 2px line, 10% wash, 8px dots with white ring, recessive grid, 0–100 axis, hover tooltip value-first, last value labelled, "View as table"; <2 points → "complete one more"), skill bars (one hue) + focus area (weakest skill), by-mode tiles. Accent #2a78d6 passed the dataviz palette validator. **Bug found:** dots inherited the area's fillOpacity 0.1 → almost invisible → `fillOpacity: 1` on dot/activeDot. **Verified:** API with known data (40/60/80 → avg 60, skills 6/5/6.5/4, tech avg 50, change +20; other user + in-progress excluded; new user → zeros/empty; no login 401); browser 12 interviews: avg 70.4, +28, tech 66 match hand calc, 12 dots, tooltip on dot 3 = Role 3 · 80 · HR, mobile no overflow, new user → analytics hidden, no console errors. Not browser-tested: the 1-interview "complete one more" state. Test data deleted. `npm run check` passes. Not committed. |
 | 2026-10-04 | You | 15, 17 | ✅ Committed (`c75f76e`). |
 | 2026-10-04 | Claude | 15, 17 | ✅ History page + PDF (Step 16 analytics not done yet). **Backend:** `historyQuerySchema` gets optional `mode` (enum → 400 otherwise), `getHistory` filters by it. **Client:** `pages/History.jsx` + protected lazy `/history` route: 9 cards per page (role, mode, experience, date, colour score or status badge), All/Technical/HR/Confidence tabs, Load more (appends next page), Continue on an in-progress card (saves it as the active interview → /interview resumes it), skeleton, empty state, error + Try again. `MODE_LABEL` moved to constants. `npm i jspdf jspdf-autotable`; `utils/reportPdf.js` (dynamic import → separate chunks, nothing extra on page load): header with role (cut to 1 line) + coloured score, skill table, strengths/weaknesses/improvements, one table per question, page numbers, local-date filename; AI text cleaned to Latin-1 (‑ ’ “ … → - ' " ...) because jsPDF fonts can't draw them. Report gets Download PDF + View history buttons. **Verified:** API all/hr/technical page 2/bad mode; headless Chrome: 12 interviews (starting hidden), 9 cards → Load more → 12, HR tab → 5 all HR, report → PDF downloaded (2 pages, clean text, checked with pdftotext + rendered image), View history works, Continue → "question 1 of 5" resume screen, mobile no overflow, empty user → empty state, no console errors. Test data deleted. `npm run check` passes. Not committed. |
@@ -114,7 +116,9 @@ Newest first. Format: `date · who · step · what changed`.
 | 2026-09-30 | Decision | Email/password login uses our own bcrypt + MongoDB (not Firebase email auth), with email verification required | ✅ Decided (learning bcrypt) |
 | 2026-09-30 | Action | Create a Gmail App Password and add `SMTP_*` vars to `server/.env` | ✅ Done — Gmail accepted test mails |
 | 2026-09-30 | Known gap | Password reset does not log out other devices (JWT is stateless, 7-day cookie stays valid). Fix later with a `tokenVersion` on the user checked in `isAuth` | ⏭️ Later (Stage 6) |
-| — | Open | Payment gateway: Razorpay (India) or Stripe? | ❓ Decide before Step 19 |
+| 2026-10-04 | Decision | Payment gateway: **Razorpay** (India: UPI/cards/netbanking, ₹ plans) | ✅ Decided |
+| 2026-10-04 | Action | Add `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` (Test Mode) and create a webhook (`/api/payment/webhook`, events payment.captured + payment.failed, secret → `RAZORPAY_WEBHOOK_SECRET`). Webhooks need a public URL → test with ngrok / after deploy | ⬜ Owner: you |
+| 2026-10-04 | Known gap | Users created before Step 18 have no ledger rows for their old credits (balance is right, history starts now) | ⏭️ Accepted |
 | 2026-09-30 | Decision | AI: free models for now — `nvidia/nemotron-3-super-120b-a12b:free` + fallbacks `google/gemma-4-31b-it:free`, `google/gemma-4-26b-a4b-it:free` (OpenRouter account is free tier). Switch `OPENROUTER_MODEL` to a paid model before real users. | ✅ Decided |
 | 2026-09-30 | Decision | Interview: 50 credits (all modes), 5 questions (easy, easy, medium, medium, hard), time limits 60/90/120 s, resume optional, follow-up questions later (Stage 7) | ✅ Decided |
 | 2026-10-03 | Decision | Double-click on Start: server idempotency key (`requestId` UUID per attempt + unique index, reserve → charge → AI → refund on fail). Frontend disabled button in Step 11. "One active interview per user" later (Stage 7) | ✅ Decided |
@@ -152,7 +156,7 @@ Newest first. Format: `date · who · step · what changed`.
 | F12 | **Step 3 – Report:** scores, strengths, weaknesses, improvements | `Step3report.jsx`, `Interviewreport.jsx` | ❌ Empty stub |
 | F13 | Downloadable PDF report | Home | ❌ Not started |
 | F14 | Interview history + analytics (progress over time) | `/history` link in Home & Navbar | ❌ Page/route doesn't exist |
-| F15 | Pricing / buy credits (payment gateway) | `/pricing` link in Navbar | ❌ Page/route doesn't exist |
+| F15 | Pricing / buy credits (payment gateway) | `/pricing` link in Navbar | ✅ Razorpay (Step 19) |
 
 **Where you are right now:** see the **§0 Project Tracker**. Foundation (auth, landing UI, AI service) is done, and the next milestone is the end-to-end interview loop (F6 → F8 → F10 → F12).
 
@@ -559,17 +563,17 @@ Own passwords with bcrypt (not Firebase email auth) — chosen to learn hashing.
 ### Stage 5 — Payments
 
 #### Step 18 🖥️ Transaction ledger ⏱️ 0.5 day
-- [ ] `Transaction` model (§5); write a row on signup bonus, interview start, refund and purchase
-- [ ] Use a MongoDB transaction/session for the credit update plus the ledger insert
+- [x] `Transaction` model (§5); write a row on signup bonus, interview start, refund and purchase
+- [x] Use a MongoDB transaction/session for the credit update plus the ledger insert
 
 #### Step 19 🖥️🎨 Pricing + Razorpay/Stripe ⏱️ 2 days
-- [ ] Plans kept in config (e.g. 500 credits for ₹99, 1500 for ₹249)
-- [ ] `POST /api/payment/order`, then checkout, then `POST /api/payment/verify` (verify the signature on the server), then add credits
-- [ ] **Webhook** handler that is idempotent (a unique `paymentId` index) so a payment is never credited twice
-- [ ] `/pricing` page with plan cards, connected to the "Buy more credits" button
+- [x] Plans kept in config (e.g. 500 credits for ₹99, 1500 for ₹249)
+- [x] `POST /api/payment/order`, then checkout, then `POST /api/payment/verify` (verify the signature on the server), then add credits
+- [x] **Webhook** handler that is idempotent (a unique `paymentId` index) so a payment is never credited twice
+- [x] `/pricing` page with plan cards, connected to the "Buy more credits" button
 
 #### Step 20 🎨 Account page ⏱️ 0.5 day
-- [ ] Credit balance, transaction history, logout
+- [x] Credit balance, transaction history, logout
 
 **✅ Done when:** a test-mode payment adds credits exactly once, even if the webhook fires twice.
 

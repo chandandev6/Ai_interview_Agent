@@ -8,6 +8,8 @@ const userSlice = createSlice({
         // app khulte hi current-user check hota hai — tab tak "pata nahi" (true).
         // bina iske refresh par ek pal ke liye user logged-out dikhta aur ProtectedRoute login par bhej deta
         loading: true,
+        // user ne khud logout kiya (session expire nahi hua) — ProtectedRoute login ki jagah home par bheje
+        loggedOut: false,
     },
 
     reducers: {
@@ -15,6 +17,12 @@ const userSlice = createSlice({
         setUserData: (state, action) => {
             state.userData = action.payload;
             state.loading = false;
+            state.loggedOut = false;
+        },
+        logout: (state) => {
+            state.userData = null;
+            state.loading = false;
+            state.loggedOut = true;
         },
         // check ho gaya par user nahi mila (userData ko chhedo mat — beech me login ho gaya ho to mit jaata)
         finishLoading: (state) => {
@@ -27,6 +35,6 @@ const userSlice = createSlice({
     },
 });
 
-export const { setUserData, finishLoading, setCredit } = userSlice.actions;
+export const { setUserData, finishLoading, setCredit, logout } = userSlice.actions;
 
 export default userSlice.reducer;

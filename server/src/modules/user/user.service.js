@@ -1,5 +1,6 @@
 import User from "./user.model.js";
 import AppError from "../../utils/AppError.js";
+import { recordSignupBonus } from "../credit/credit.service.js";
 
 // response me bhejne se pehle secret fields hatao (login me .select("+password") kiya ho tab bhi)
 export const toSafeUser = (user) => {
@@ -27,7 +28,9 @@ export const getUserById = async (userId) => {
 export const findOrCreateGoogleUser = async ({ email, name }) => {
     const user = await User.findOne({ email }).select("+password");
     if (!user) {
-        return toSafeUser(await User.create({ name, email, isVerified: true }));
+        const created = await User.create({ name, email, isVerified: true });
+        await recordSignupBonus(created); // passbook ki pehli row: welcome credits
+        return toSafeUser(created);
     }
 
     if (!user.isVerified) {

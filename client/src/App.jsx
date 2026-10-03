@@ -16,6 +16,8 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Interviewpage = lazy(() => import("./pages/Interviewpage"));
 const Interviewreport = lazy(() => import("./pages/Interviewreport"));
 const History = lazy(() => import("./pages/History"));
+const Pricing = lazy(() => import("./pages/Pricing"));
+const Account = lazy(() => import("./pages/Account"));
 
 function App() {
     const dispatch = useDispatch();
@@ -71,7 +73,22 @@ function App() {
                         </ProtectedRoute>
                     }
                 />
-                {/* TODO: /pricing page banana baaki hai (Navbar se link hai) — Step 19 */}
+                <Route
+                    path="/pricing"
+                    element={
+                        <ProtectedRoute>
+                            <Pricing />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/account"
+                    element={
+                        <ProtectedRoute>
+                            <Account />
+                        </ProtectedRoute>
+                    }
+                />
             </Routes>
         </Suspense>
     );

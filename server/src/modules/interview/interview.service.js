@@ -3,6 +3,7 @@ import { PDFParse } from "pdf-parse";
 import AppError from "../../utils/AppError.js";
 import { askAiJson } from "../../lib/ai/openRouter.js";
 import User from "../user/user.model.js";
+import { addCredits, chargeCredits } from "../credit/credit.service.js";
 import Interview from "./interview.model.js";
 import { CRITERIA, MODES, QUESTION_PLAN, TIME_LIMITS } from "./interview.modes.js";
 import { evaluationPrompt, questionsPrompt, reportPrompt, resumePrompt } from "./interview.prompts.js";
@@ -84,12 +85,9 @@ export const startInterview = async (userId, { role, experience, mode, resume, r
         throw error;
     }
 
-    // 2. credit kaato — check ($gte) + minus ($inc) ek hi atomic query me, credit kabhi negative nahi hoga
-    const user = await User.findOneAndUpdate(
-        { _id: userId, credit: { $gte: cost } },
-        { $inc: { credit: -cost } },
-        { returnDocument: "after" },
-    );
+    // 2. credit kaato — check ($gte) + minus ($inc) ek hi atomic query me, credit kabhi negative nahi hoga.
+    // Saath me ledger row (credit.service) — dono ek MongoDB transaction me
+    const user = await chargeCredits(userId, cost, { interviewId: interview._id });
     if (!user) {
         await Interview.deleteOne({ _id: interview._id });
         throw new AppError(402, `Not enough credits. This interview needs ${cost} credits.`, "NOT_ENOUGH_CREDITS");
@@ -117,7 +115,11 @@ export const startInterview = async (userId, { role, experience, mode, resume, r
         interview.status = "in_progress";
         await interview.save();
     } catch (error) {
-        await User.updateOne({ _id: userId }, { $inc: { credit: cost } });
+        await addCredits(userId, cost, {
+            type: "refund",
+            interviewId: interview._id,
+            note: "Interview could not start",
+        });
         // delete = same requestId se "Try again" phir se kaam karega
         await Interview.deleteOne({ _id: interview._id });
         throw error;

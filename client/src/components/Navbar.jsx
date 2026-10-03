@@ -6,7 +6,7 @@ import { HiOutlineLogout } from "react-icons/hi";
 import { FaUserAstronaut } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { setUserData } from "../redux/userSlice.js";
+import { logout } from "../redux/userSlice.js";
 import { logoutUser } from "../api/auth.api.js";
 
 // login popup (aur uske saath Firebase ka bada code) tabhi download ho jab user popup khole
@@ -23,7 +23,7 @@ function Navbar() {
     const handleLogout = async () => {
         try {
             await logoutUser();
-            dispatch(setUserData(null)); // Clear user data on logout
+            dispatch(logout()); // private page par ho to ProtectedRoute home bhejega (login nahi)
             setShowUserPopup(false); // Close the user popup
             setShowCreditPopup(false); // Close the credit popup
             navigate("/"); // Redirect to the home page
@@ -78,7 +78,10 @@ function Navbar() {
                             <p className="text-sm text-gray-600 mb-4">Need more credits to continue interviews?</p>
 
                             <button
-                                onClick={() => navigate("/pricing")}
+                                onClick={() => {
+                                    setShowCreditPopup(false);
+                                    navigate("/pricing");
+                                }}
                                 className="w-full bg-black text-white py-2 rounded-lg text-sm"
                             >
                                 Buy more credits
@@ -110,6 +113,15 @@ function Navbar() {
                         {showUserPopup && (
                             <div className="absolute top-12 right-0 mt-3 w-64 bg-white shadow-xl border border-gray-200 p-5 rounded-xl z-50">
                                 <p className="text-md text-blue-500 font-medium mb-1">{userData?.name}</p>
+                                <button
+                                    onClick={() => {
+                                        setShowUserPopup(false);
+                                        navigate("/account");
+                                    }}
+                                    className="w-full text-left text-sm py-2 hover:text-black text-gray-600"
+                                >
+                                    Account & credits
+                                </button>
                                 <button
                                     onClick={() => {
                                         setShowUserPopup(false);

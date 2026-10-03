@@ -7,6 +7,8 @@ import cookieParser from "cookie-parser";
 import authRouter from "./modules/auth/auth.routes.js";
 import userRouter from "./modules/user/user.routes.js";
 import interviewRouter from "./modules/interview/interview.routes.js";
+import creditRouter from "./modules/credit/credit.routes.js";
+import paymentRouter, { webhookRouter } from "./modules/payment/payment.routes.js";
 import { notFound, errorHandler } from "./middlewares/errorHandler.js";
 import { globalLimiter } from "./middlewares/rateLimit.js";
 import { env } from "./config/env.js";
@@ -35,6 +37,10 @@ app.get("/health", (req, res) => {
 });
 
 app.use(globalLimiter); // 100 req/min per IP — JSON parse / DB se pehle hi flood rok do
+
+// Razorpay webhook ko RAW body chahiye (signature bytes par) — isliye express.json() se PEHLE
+app.use("/api/payment/webhook", webhookRouter);
+
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
 
@@ -42,6 +48,8 @@ app.use(cookieParser());
 app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
 app.use("/api/interview", interviewRouter);
+app.use("/api/credits", creditRouter);
+app.use("/api/payment", paymentRouter);
 
 app.get("/", (req, res) => {
     return res.json({ message: "Server started" });

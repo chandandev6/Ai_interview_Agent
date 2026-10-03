@@ -35,6 +35,12 @@ const envSchema = z
         SMTP_USER: z.string().optional(),
         SMTP_PASS: z.string().optional(),
         MAIL_FROM: z.string().optional(), // e.g. "InterviewIQ <yourmail@gmail.com>" — na ho to SMTP_USER
+
+        // Razorpay (credits kharidna). Dashboard → Test Mode → API Keys. Na ho to payments band (baaki app chalta hai)
+        RAZORPAY_KEY_ID: z.string().optional(),
+        RAZORPAY_KEY_SECRET: z.string().optional(),
+        // Dashboard → Webhooks me jo secret khud likha — webhook ka signature isse check hota hai
+        RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
     })
     .superRefine((env, ctx) => {
         // production me asli users ko email jaana hi chahiye — bina SMTP ke server start mat karo
