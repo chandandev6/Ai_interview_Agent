@@ -5,6 +5,7 @@ import { askAiJson } from "../../lib/ai/openRouter.js";
 import User from "../user/user.model.js";
 import { addCredits, chargeCredits } from "../credit/credit.service.js";
 import Interview from "./interview.model.js";
+import { getLogger } from "../../lib/logger.js";
 import { CRITERIA, MODES, QUESTION_PLAN, TIME_LIMITS } from "./interview.modes.js";
 import { evaluationPrompt, questionsPrompt, reportPrompt, resumePrompt } from "./interview.prompts.js";
 import { evaluationAiSchema, questionsAiSchema, reportAiSchema, resumeAiSchema } from "./interview.ai-schemas.js";
@@ -43,7 +44,7 @@ export const parseResume = async (buffer) => {
     try {
         return await askAiJson(resumePrompt(text.slice(0, RESUME_MAX_CHARS)), resumeAiSchema);
     } catch (error) {
-        console.error("Resume parse AI failed:", error.message);
+        getLogger().error({ err: error }, "Resume parse AI failed");
         throw new AppError(503, "AI is busy right now, please try again in a minute.", "AI_UNAVAILABLE");
     }
 };
@@ -102,7 +103,7 @@ export const startInterview = async (userId, { role, experience, mode, resume, r
                 questionsAiSchema,
             ));
         } catch (error) {
-            console.error("Questions AI failed:", error.message);
+            getLogger().error({ err: error }, "Questions AI failed");
             throw new AppError(503, "AI is busy right now, please try again in a minute.", "AI_UNAVAILABLE");
         }
 
@@ -191,7 +192,7 @@ export const submitAnswer = async (userId, interviewId, { questionIndex, answer,
                 evaluationAiSchema,
             );
         } catch (error) {
-            console.error("Evaluation AI failed:", error.message);
+            getLogger().error({ err: error }, "Evaluation AI failed");
             // claim wapas — warna question "answered" ban ke atak jaata, bina score ke
             await Interview.updateOne(
                 { _id: interviewId, [`${path}.answer`]: cleanAnswer },
@@ -296,7 +297,7 @@ export const finishInterview = async (userId, interviewId) => {
                     reportAiSchema,
                 );
             } catch (error) {
-                console.error("Report AI failed:", error.message);
+                getLogger().error({ err: error }, "Report AI failed");
                 throw new AppError(503, "AI is busy right now, please click Finish again.", "AI_UNAVAILABLE");
             }
         }

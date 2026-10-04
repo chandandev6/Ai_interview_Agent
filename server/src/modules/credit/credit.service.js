@@ -3,6 +3,7 @@
 import mongoose from "mongoose";
 import User from "../user/user.model.js";
 import Transaction from "./transaction.model.js";
+import { getLogger } from "../../lib/logger.js";
 
 // credit kaato — sirf tab jab kaafi ho ($gte check + $inc ek hi atomic query). Kam ho to null (kuch nahi badla)
 export const chargeCredits = async (userId, amount, { interviewId } = {}) =>
@@ -47,7 +48,7 @@ export const recordSignupBonus = async (user) => {
             note: "Welcome credits",
         });
     } catch (error) {
-        if (error.code !== 11000) console.error("Signup bonus ledger failed:", error.message);
+        if (error.code !== 11000) getLogger().error({ err: error }, "Signup bonus ledger failed");
     }
 };
 

@@ -10,6 +10,7 @@ import {
 import User from "../user/user.model.js";
 import Transaction from "../credit/transaction.model.js";
 import Payment from "./payment.model.js";
+import { getLogger } from "../../lib/logger.js";
 import { getPlan, PLANS } from "./payment.plans.js";
 
 const ensureEnabled = () => {
@@ -35,7 +36,7 @@ export const createOrder = async (userId, planId) => {
             notes: { userId: String(userId), planId }, // Razorpay dashboard me dikhta hai — support ke kaam aata hai
         });
     } catch (error) {
-        console.error("Razorpay order failed:", error?.error?.description || error.message);
+        getLogger().error({ providerError: error?.error?.description || error.message }, "Razorpay order failed");
         throw new AppError(502, "Could not start the payment. Please try again.", "PAYMENT_PROVIDER_ERROR");
     }
 
@@ -127,8 +128,9 @@ export const handleWebhook = async (rawBody, signature) => {
     if (event.event === "payment.captured" || event.event === "order.paid") {
         // jitna maanga tha utna hi aaya? (galti / chhed-chhaad se kam amount par credit na ho)
         if (entity.amount !== payment.amount) {
-            console.error(
-                `Webhook amount mismatch for ${entity.order_id}: got ${entity.amount}, expected ${payment.amount}`,
+            getLogger().error(
+                { orderId: entity.order_id, got: entity.amount, expected: payment.amount },
+                "Webhook amount mismatch",
             );
             return { ignored: true };
         }

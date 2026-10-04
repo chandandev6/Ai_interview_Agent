@@ -41,6 +41,11 @@ const envSchema = z
         RAZORPAY_KEY_SECRET: z.string().optional(),
         // Dashboard → Webhooks me jo secret khud likha — webhook ka signature isse check hota hai
         RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+
+        // kitna detail log ho: debug < info < warn < error. Production me "info" kaafi hai
+        LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
+        // sentry.io → Project → Client Keys (DSN). Na ho to error reporting band
+        SENTRY_DSN: z.string().optional(),
     })
     .superRefine((env, ctx) => {
         // production me asli users ko email jaana hi chahiye — bina SMTP ke server start mat karo

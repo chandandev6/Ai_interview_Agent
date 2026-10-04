@@ -4,6 +4,7 @@ import { firebaseAuth } from "../../config/firebaseAdmin.js";
 import { env } from "../../config/env.js";
 import AppError from "../../utils/AppError.js";
 import { sendMail } from "../../lib/mail/mailer.js";
+import { getLogger } from "../../lib/logger.js";
 import User from "../user/user.model.js";
 import { findOrCreateGoogleUser, toSafeUser } from "../user/user.service.js";
 import { recordSignupBonus } from "../credit/credit.service.js";
@@ -32,7 +33,7 @@ const trySendMail = async (mail, failMessage) => {
     try {
         await sendMail(mail);
     } catch (error) {
-        console.error("Failed to send email:", error.message);
+        getLogger().error({ err: error }, "Failed to send email");
         throw new AppError(502, failMessage);
     }
 };
@@ -165,7 +166,7 @@ export const requestPasswordReset = async (email) => {
     // anjaan email par turant → timing se pata chal jaata ki email registered hai. Background me bhejo.
     const link = frontendLink("/reset-password", token);
     sendMail({ to: user.email, ...passwordResetEmail({ name: user.name, link }) }).catch((error) =>
-        console.error("Failed to send password reset email:", error.message),
+        getLogger().error({ err: error }, "Failed to send password reset email"),
     );
 };
 

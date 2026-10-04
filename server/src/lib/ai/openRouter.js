@@ -1,5 +1,6 @@
 import axios from "axios";
 import { env } from "../../config/env.js";
+import { getLogger } from "../logger.js";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
@@ -53,7 +54,7 @@ export const askAi = async (messages, { json = false } = {}) => {
             throw new Error(`${error.message} (${model}): ${content.slice(0, 120)}`, { cause: error });
         }
     } catch (error) {
-        console.error("Error in askAi:", error.response?.data?.error?.message || error.message);
+        getLogger().error({ aiError: error.response?.data?.error?.message || error.message }, "askAi request failed");
         throw error;
     }
 };
@@ -81,7 +82,7 @@ export const askAiJson = async (messages, schema, { retries = DEFAULT_RETRIES } 
         } catch (error) {
             lastError = error;
         }
-        console.warn(`AI attempt ${attempt} failed: ${lastError.message}`);
+        getLogger().warn(`AI attempt ${attempt} failed: ${lastError.message}`);
         if (attempt <= retries) await sleep(RETRY_DELAY_MS * attempt);
     }
     throw lastError;

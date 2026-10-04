@@ -10,12 +10,14 @@ export const errorHandler = (err, req, res, _next) => {
     const isAppError = err instanceof AppError;
     const status = err.status || (err.name === "MulterError" ? 400 : 500);
     if (status >= 500) {
-        console.error("Unhandled error:", err);
+        // pino-http response wali log line me ye error (stack ke saath) daal deta hai — reqId ke saath, alag log ki zarurat nahi
+        res.err = err;
     }
     res.status(status).json({
         success: false,
         // AppError ka message humne khud likha hai (5xx bhi) — dikhana safe; baaki 500 ka andar ka detail chhupao
         message: isAppError || status < 500 ? err.message : "Internal server error",
         ...(isAppError && err.code && { code: err.code }),
+        requestId: req.id, // user support ko ye bataye → hum logs me turant dhoondh le
     });
 };

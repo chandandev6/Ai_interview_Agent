@@ -17,8 +17,8 @@
 ### 0.1 Current focus
 | | |
 |---|---|
-| **Now** | You: add Razorpay test keys + webhook, do one real test payment |
-| **Next** | Stage 6: Step 21 logging & monitoring (or Step 25 deploy a beta) |
+| **Now** | You: commit Step 21; (optional) Sentry DSNs. Razorpay webhook after deploy (Step 25) |
+| **Next** | Stage 6: Step 22 Redis (or Step 25 deploy a beta) |
 | **Milestone** | 🎯 MVP (end of Stage 4): target **2026-10-22** |
 | **Last updated** | 2026-10-04 |
 
@@ -31,9 +31,9 @@
 | 3. Interview frontend | 10–14 | 5/5 | `██████████` 100% | 2026-10-17 | ✅ |
 | 4. History & reports 🎯 MVP | 15–17 | 3/3 | `██████████` 100% | 2026-10-22 | ✅ |
 | 5. Payments | 18–20 | 3/3 | `██████████` 100% | 2026-10-28 | ✅ |
-| 6. Production & scale | 21–26 | 0/6 | `░░░░░░░░░░` 0% | 2026-11-06 | ⬜ |
+| 6. Production & scale | 21–26 | 1/6 | `██░░░░░░░░` 17% | 2026-11-06 | 🟡 |
 | 7. Differentiators | 27–33 | 0/7 | `░░░░░░░░░░` 0% | after launch | ⬜ |
-| **Total (Steps 1–26 + 2b)** | | **21/27** | `████████░░` 78% | | |
+| **Total (Steps 1–26 + 2b)** | | **22/27** | `████████░░` 81% | | |
 
 ### 0.3 Step board
 | # | Step | Area | Est. | Status | Started | Done | Notes |
@@ -56,10 +56,10 @@
 | 15 | History page | 🎨 | 1d | ✅ | 2026-10-04 | 2026-10-04 | cards, mode tabs (server `?mode=`), Load more, Continue for in-progress, empty/skeleton/error. Committed `c75f76e` |
 | 16 | Analytics (charts + stats API) | 🎨🖥️ | 1d | ✅ | 2026-10-04 | 2026-10-04 | `GET /stats` ($facet aggregation), KPI tiles + recharts trend (lazy) + skill bars + by mode on /history. Committed `b9fefd8` |
 | 17 | Report page + PDF download | 🎨 | 1d | ✅ | 2026-10-04 | 2026-10-04 | `utils/reportPdf.js` (jspdf + autotable, lazy-loaded, Latin-1 text cleanup). Committed `c75f76e` |
-| 18 | Transaction ledger | 🖥️ | 0.5d | ✅ | 2026-10-04 | 2026-10-04 | `modules/credit`: Transaction model, charge/add in a MongoDB transaction, signup bonus row, `GET /api/credits/transactions`. Not committed |
-| 19 | Pricing + payment gateway + webhook | 🖥️🎨 | 2d | ✅ | 2026-10-04 | 2026-10-04 | Razorpay: plans, order, verify (HMAC), idempotent webhook, `/pricing`. Real test payment pending (needs your keys). Not committed |
-| 20 | Account page | 🎨 | 0.5d | ✅ | 2026-10-04 | 2026-10-04 | `/account`: profile, balance, credit history, logout. Not committed |
-| 21 | Logging & monitoring (pino, Sentry) | 🖥️ | 0.5d | ⬜ | | | |
+| 18 | Transaction ledger | 🖥️ | 0.5d | ✅ | 2026-10-04 | 2026-10-04 | `modules/credit`: Transaction model, charge/add in a MongoDB transaction, signup bonus row, `GET /api/credits/transactions`. Committed `6920f01` |
+| 19 | Pricing + payment gateway + webhook | 🖥️🎨 | 2d | ✅ | 2026-10-04 | 2026-10-04 | Razorpay: plans, order, verify (HMAC), idempotent webhook, `/pricing`. Real test payment ✅ 2026-10-05 (₹249 Pro → +1500). Webhook not set yet (needs public URL). Committed `6920f01` |
+| 20 | Account page | 🎨 | 0.5d | ✅ | 2026-10-04 | 2026-10-04 | `/account`: profile, balance, credit history, logout. Committed `6920f01` |
+| 21 | Logging & monitoring (pino, Sentry) | 🖥️ | 0.5d | ✅ | 2026-10-04 | 2026-10-04 | pino + pino-http (reqId, AsyncLocalStorage → `getLogger()`), Sentry server + client (optional DSN), `/ready`. Not committed |
 | 22 | Redis (rate limit store, cache) | 🖥️ | 1d | ⬜ | | | |
 | 23 | Background queue (BullMQ worker) | 🖥️ | 1–2d | ⬜ | | | |
 | 24 | Tests + CI | 🖥️🎨 | 1–2d | ⬜ | | | |
@@ -71,6 +71,9 @@ Newest first. Format: `date · who · step · what changed`.
 
 | Date | Who | Step | What |
 |------|-----|------|------|
+| 2026-10-05 | You + Claude | 19 | ✅ **Real Razorpay test payment.** Test keys in server/.env (webhook secret empty). First try failed: card 4111… counts as *international* (disabled on the account) → used an Indian test card. Order `order_TjvynjBjEwWBpf` (Pro, ₹249): Razorpay shows order paid + 1 captured payment (3 earlier failed attempts on the same order → no credit). DB: Payment row created → paid with paymentId + paidAt, exactly one `purchase` ledger row +1500, balance 450 → 1950. Ledger sum (1450) ≠ balance (1950) only because this account's 500 signup bonus (2026-08-31) predates the ledger (Step 18) — expected. Webhook still to set up after deploy. |
+| 2026-10-04 | Claude | 21 | ✅ Logging & monitoring. **Server:** `npm i pino pino-http @sentry/node` + dev `pino-pretty`. `lib/logger.js` (pino, level from new env `LOG_LEVEL`, pretty in development / JSON otherwise, redacts cookie/authorization) + `AsyncLocalStorage` → `getLogger()` gives the request's logger (with reqId) anywhere in services. `middlewares/requestLogger.js` (pino-http, first in `app.js`): reqId = incoming `X-Request-Id` if short+clean else UUID, echoed in `X-Request-Id` header; one line per request (method, url, status, time, userId), 4xx warn / 5xx error, `/health` + `/ready` not logged. `errorHandler` sets `res.err` (5xx stack lands on the request line, no double log) and adds `requestId` to error responses. All `console.*` replaced (only `env.js` left, it runs before the logger exists). `GET /ready`: readyState check then `db.admin().ping()` → 200 / 503. Sentry: `src/instrument.js` loaded via `node --import` in start/dev scripts, env `SENTRY_DSN` optional (empty → off), `setupExpressErrorHandler` before our handler (only 5xx sent), no PII. **Client:** `npm i @sentry/react`; `config/sentry.js` dynamic-imports Sentry only when `VITE_SENTRY_DSN` is set (empty → removed from the build entirely; set → own chunk, main bundle +0.3 KB). **Bug found & fixed:** `/^…$/.test(undefined)` is true ("undefined" string) → every request without the header got id "undefined" → setHeader threw → 500 everywhere; added `typeof` check. **Verified:** `/ready` 200 and 503 (no DB); 401/400/404 carry `X-Request-Id` + `requestId`; bad incoming id replaced; service log after an `await` keeps reqId; 500 line has reqId + stack; fake local Sentry ingest received the 500 but not the 401; `npm run dev` boots; `npm run check` passes. **Not tested:** real Sentry dashboard (needs your DSNs). Not committed. |
+| 2026-10-04 | You | 18–20 | ✅ Committed Stage 5 (`6920f01`). Session ended — next: Stage 6, Step 21 (logging & monitoring). |
 | 2026-10-04 | Claude | 18–20 | ✅ Stage 5 Payments (you chose Razorpay, no keys yet → tested with self-made signatures). **Ledger (Step 18):** `modules/credit/` — `Transaction` {userId, type signup_bonus/interview/refund/purchase, amount ±, balanceAfter, interviewId?, paymentId?, note}; indexes {userId, createdAt}, unique paymentId (partial), one signup_bonus per user (partial unique). `credit.service`: `chargeCredits` ($gte/$inc + ledger row) and `addCredits` in `mongoose.connection.transaction()` (Atlas); `recordSignupBonus` on Google signup + register; `GET /api/credits/transactions` (paged). Interview start/refund now use it. **Razorpay (Step 19):** `npm i razorpay`; env RAZORPAY_KEY_ID/SECRET/WEBHOOK_SECRET optional (empty → payments disabled, 503 PAYMENTS_DISABLED; placeholders appended to server/.env); `lib/payment/razorpay.js` (HMAC-SHA256 + timingSafeEqual); `modules/payment/`: plans in code (Starter 500/₹99, Pro 1500/₹249, Max 4000/₹599 — server sets price), `Payment` model (one row per order, status created/paid/failed), `GET /plans` (public), `POST /order`, `POST /verify` (signature of order_id|payment_id + owner check), `POST /webhook` (raw body before express.json, signature header, payment.captured/order.paid with amount check, payment.failed). Single `fulfillOrder` used by both: claim order `status ≠ paid → paid` + $inc credit + purchase row in one transaction → idempotent. **Client:** `/pricing` (plan cards, per-interview price, Razorpay checkout script lazy-loaded, verify → setCredit → /account; verify failure → "credits in a minute" because webhook covers it), `/account` (profile, balance + refresh, credit history with Load more, logout), Navbar "Account & credits" link, Buy-more popup closes. **Bug fixed:** logout on a private page went to /auth (React Router applies navigation in a transition, Redux null renders first) → new `logout` action + `loggedOut` flag, ProtectedRoute sends to home. **Verified (fake keys):** plans on/off; order 401/400/502 (fake keys)/503 (disabled); verify bad sig 400, other user 404, ok +1500, repeat → alreadyProcessed; webhook no/wrong sig 400, ok, duplicate → no credit, then verify → alreadyProcessed; **6 parallel verify+webhook → credited once**; amount mismatch ignored; failed → later captured → paid; AI-down start → ledger −50/+50, 402 → no row; register → one signup_bonus row (retry → none); balance 100+1500+500+4000+500 = 6600 ✓. Browser (Razorpay stubbed, order API intercepted, real verify): Navbar → Pricing → Buy Pro → credits 30→1530 in Navbar + Account row, mobile OK, logout → home, no console errors. Server boots with real .env (payments disabled). **Not tested:** real Razorpay popup / real webhook (needs your keys + public URL). Test data deleted. `npm run check` passes. Not committed. |
 | 2026-10-04 | You | 16 | ✅ Committed (`b9fefd8`). |
 | 2026-10-04 | Claude | 16 | ✅ Analytics → **MVP feature-complete**. **Backend:** `GET /api/interview/stats` (isAuth, before `/:id`): one aggregation — `$match` userId (manual `new ObjectId()` because aggregate() doesn't cast like find()) + completed → `$facet` {summary: count/avg/best + 4 skill avgs, byMode: count/avg/best per mode, trend: last 20 by completedAt}, `$round` to 1 decimal in DB; code reverses trend and adds latestScore + change vs previous. **Client:** `npm i recharts`; `components/history/Analytics.jsx` on top of /history (skeleton, hidden for 0 completed, silently hidden if API fails): 4 KPI tiles (latest with ↑/↓ + sign), trend card (lazy `ScoreTrendChart.jsx` → recharts in its own chunk; single-series area, 2px line, 10% wash, 8px dots with white ring, recessive grid, 0–100 axis, hover tooltip value-first, last value labelled, "View as table"; <2 points → "complete one more"), skill bars (one hue) + focus area (weakest skill), by-mode tiles. Accent #2a78d6 passed the dataviz palette validator. **Bug found:** dots inherited the area's fillOpacity 0.1 → almost invisible → `fillOpacity: 1` on dot/activeDot. **Verified:** API with known data (40/60/80 → avg 60, skills 6/5/6.5/4, tech avg 50, change +20; other user + in-progress excluded; new user → zeros/empty; no login 401); browser 12 interviews: avg 70.4, +28, tech 66 match hand calc, 12 dots, tooltip on dot 3 = Role 3 · 80 · HR, mobile no overflow, new user → analytics hidden, no console errors. Not browser-tested: the 1-interview "complete one more" state. Test data deleted. `npm run check` passes. Not committed. |
@@ -582,9 +585,9 @@ Own passwords with bcrypt (not Firebase email auth) — chosen to learn hashing.
 ### Stage 6 — Production & scale (target: 1,000 req/s)
 
 #### Step 21 🖥️ Logging & monitoring ⏱️ 0.5 day
-- [ ] `pino` + `pino-http` with a request ID; remove `console.log`
-- [ ] Sentry on client and server
-- [ ] `/ready` endpoint that pings the DB (and Redis)
+- [x] `pino` + `pino-http` with a request ID; remove `console.log`
+- [x] Sentry on client and server
+- [x] `/ready` endpoint that pings the DB (Redis ping comes in Step 22)
 
 #### Step 22 🖥️ Redis ⏱️ 1 day
 - [ ] `ioredis`; move the rate-limit store to Redis (`rate-limit-redis`) so limits work across instances

@@ -1,5 +1,7 @@
 // sirf express app — listen yaha nahi (tests me supertest se directly use kar sakte hai)
 import express from "express";
+import mongoose from "mongoose";
+import * as Sentry from "@sentry/node";
 import cors from "cors";
 import helmet from "helmet";
 import compression from "compression";
@@ -11,6 +13,7 @@ import creditRouter from "./modules/credit/credit.routes.js";
 import paymentRouter, { webhookRouter } from "./modules/payment/payment.routes.js";
 import { notFound, errorHandler } from "./middlewares/errorHandler.js";
 import { globalLimiter } from "./middlewares/rateLimit.js";
+import { requestLogger } from "./middlewares/requestLogger.js";
 import { env } from "./config/env.js";
 
 const app = express();
@@ -21,6 +24,7 @@ const app = express();
 // (local me off, warna koi bhi fake header bhej ke apni IP badal sakta hai)
 app.set("trust proxy", env.NODE_ENV === "production" ? 1 : false);
 
+app.use(requestLogger); // sabse pehle — har request ko ID mile aur har response (errors bhi) log ho
 app.use(helmet()); // security headers — sabse pehle, taaki error responses par bhi lage
 app.use(
     cors({
@@ -34,6 +38,21 @@ app.use(compression()); // responses gzip — kam data, fast load
 // load balancer / uptime checks ke liye — limiter se upar, taaki ye kabhi block na ho
 app.get("/health", (req, res) => {
     return res.json({ status: "ok" });
+});
+
+// /health = process zinda hai; /ready = requests serve kar sakta hai (DB juda hai). Deploy platform isse traffic bhejta hai
+app.get("/ready", async (req, res) => {
+    // readyState 1 = connected. Pehle ye check, warna toote DB par ping 30s tak latka rahega
+    if (mongoose.connection.readyState !== 1) {
+        return res.status(503).json({ status: "not ready", db: "disconnected" });
+    }
+    try {
+        await mongoose.connection.db.admin().ping();
+        return res.json({ status: "ready", db: "ok" });
+    } catch (error) {
+        req.log.warn({ err: error }, "Readiness DB ping failed");
+        return res.status(503).json({ status: "not ready", db: "ping failed" });
+    }
 });
 
 app.use(globalLimiter); // 100 req/min per IP — JSON parse / DB se pehle hi flood rok do
@@ -56,6 +75,8 @@ app.get("/", (req, res) => {
 });
 
 app.use(notFound);
+// 5xx errors Sentry ko bhejo (DSN na ho to kuch nahi karta) — humare errorHandler se pehle, taaki error use mile
+Sentry.setupExpressErrorHandler(app);
 app.use(errorHandler);
 
 export default app;
