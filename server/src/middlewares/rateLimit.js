@@ -1,6 +1,5 @@
 // ek IP / user ek minute me kitni requests bhej sakta hai — bots se server aur AI bill dono bachao
 // counter Redis me — sab server copies ek hi counter dekhti hai, restart par bhi reset nahi hota.
-// REDIS_URL na ho (local dev) → har server ki apni memory me (pehle jaisa)
 import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 import { RedisStore } from "rate-limit-redis";
 import { redis, isRedisReady } from "../config/redis.js";

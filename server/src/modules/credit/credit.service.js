@@ -45,6 +45,18 @@ export const addCredits = async (userId, amount, { type, interviewId, paymentId,
     return user;
 };
 
+// cleanup job ke liye: credit kata tha aur refund abhi tak nahi hua → tab hi refund. Do baar chale to bhi ek hi refund
+export const refundInterviewIfCharged = async ({ userId, interviewId, amount, note }) => {
+    const [charged, refunded] = await Promise.all([
+        Transaction.exists({ interviewId, type: "interview" }),
+        Transaction.exists({ interviewId, type: "refund" }),
+    ]);
+    if (!charged || refunded) return false;
+    await addCredits(userId, amount, { type: "refund", interviewId, note });
+    getLogger().info({ interviewId, userId, amount }, "Refunded credits for a stuck interview");
+    return true;
+};
+
 // naye user ko default credits milte hai (User model default) — passbook ki pehli row.
 // Fail ho to signup mat roko (bas log) — balance sahi hai, sirf history ki ek line kam hogi
 export const recordSignupBonus = async (user) => {

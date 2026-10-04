@@ -1,5 +1,5 @@
-// Redis = RAM me chalne wala fast database. Yaha: rate-limit counters (sab servers ka ek hi counter) + cache.
-// REDIS_URL khaali (local dev) → redis = null → in-memory limiter, koi cache nahi. App waise hi chalta hai.
+// Redis = RAM me chalne wala fast database. Yaha: rate-limit counters (sab servers ka ek hi counter), cache, job queue.
+// REDIS_URL ab zaruri hai (queue ke liye) — null wale check sirf safety ke liye bache hai
 import { Redis } from "ioredis";
 import { env } from "./env.js";
 import { logger } from "../lib/logger.js";

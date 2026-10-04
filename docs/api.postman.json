@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "InterviewIQ.AI API",
-    "description": "Full interview flow: login \u2192 resume \u2192 start \u2192 5 answers \u2192 finish \u2192 report \u2192 history.\nSet `email` and `password` (a verified email/password account). Postman keeps the `token` cookie after login automatically.\nAI routes are limited to 10 requests/min per user.",
+    "description": "Full interview flow (needs the worker running: `npm run worker`): login \u2192 resume \u2192 start \u2192 5 answers \u2192 finish \u2192 report \u2192 history.\nSet `email` and `password` (a verified email/password account). Postman keeps the `token` cookie after login automatically.\nAI routes are limited to 10 requests/min per user.\nResume upload and Finish return 202 + `jobId` \u2014 run \"Job status\" until `status` is `completed`.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -19,6 +19,10 @@
     },
     {
       "key": "interviewId",
+      "value": ""
+    },
+    {
+      "key": "jobId",
       "value": ""
     }
   ],
@@ -81,7 +85,7 @@
           "host": ["{{baseUrl}}"],
           "path": ["api", "interview", "resume"]
         },
-        "description": "Pick a text-based PDF (max 5 MB) in the `resume` field. Copy `data.resume` into the Start body if you want resume-based questions.",
+        "description": "Pick a text-based PDF (max 5 MB) in the `resume` field. Returns 202 + `jobId` (saved automatically). The AI part runs in the worker.",
         "body": {
           "mode": "formdata",
           "formdata": [
@@ -92,6 +96,31 @@
             }
           ]
         }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "if (json.data && json.data.jobId) pm.collectionVariables.set('jobId', json.data.jobId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3b. Job status (resume)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/jobs/{{jobId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "jobs", "{{jobId}}"]
+        },
+        "description": "Poll every ~2 s. `pending` \u2192 still working; `completed` \u2192 `data.result.resume` (copy it into the Start body for resume-based questions); `failed` \u2192 `data.message`."
       }
     },
     {
@@ -249,7 +278,32 @@
           "host": ["{{baseUrl}}"],
           "path": ["api", "interview", "{{interviewId}}", "finish"]
         },
-        "description": "Calculates scores in code + AI summary. Already completed \u2192 same report. Answer still being graded \u2192 409."
+        "description": "Locks the interview (`finishing`) and queues the report \u2192 202 + `jobId` (saved automatically). Already completed \u2192 200 with the same report. Answer still being graded / report already being prepared \u2192 409."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "if (json.data && json.data.jobId) pm.collectionVariables.set('jobId', json.data.jobId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6b. Job status (report)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/jobs/{{jobId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "jobs", "{{jobId}}"]
+        },
+        "description": "Poll every ~2 s until `completed` (`data.result.interviewId`), then run \"Get interview\" for the full report. `failed` \u2192 the interview is back to in_progress, Finish can be clicked again."
       }
     },
     {

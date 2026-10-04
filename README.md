@@ -51,7 +51,7 @@ Ai_interview_Agent/
 
 ## 🚀 Run locally
 
-**Needs:** Node.js 22+, a MongoDB database (local or [Atlas](https://www.mongodb.com/atlas)), a Firebase project with Google sign-in enabled, Docker (for Redis — optional in dev).
+**Needs:** Node.js 22+, a MongoDB database (local or [Atlas](https://www.mongodb.com/atlas)), a Firebase project with Google sign-in enabled, Docker (for Redis).
 
 ```bash
 # 1. install
@@ -63,11 +63,12 @@ npm install --prefix client
 cp server/.env.example server/.env
 cp client/.env.example client/.env
 
-# 3. Redis (rate limits + cache) on port 6380 — skip and leave REDIS_URL empty to run without it
+# 3. Redis (rate limits + cache + job queue) on port 6380
 docker compose up -d
 
-# 4. run (two terminals)
+# 4. run (three terminals)
 cd server && npm run dev         # http://localhost:8000/ready → {"status":"ready","db":"ok","redis":"ok"}
+cd server && npm run dev:worker  # background AI jobs (resume parsing, final report) + cleanup every minute
 cd client && npm run dev         # http://localhost:5173
 ```
 
@@ -87,7 +88,8 @@ cd client && npm run dev         # http://localhost:5173
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | production only | Gmail: `smtp.gmail.com`, `587`, your Gmail, a 16-char [App Password](https://myaccount.google.com/apppasswords). Empty in dev → emails are printed in the server terminal |
 | `MAIL_FROM` | no | `InterviewIQ <you@gmail.com>` |
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET` | no | Razorpay Test Mode keys. Empty → buying credits is disabled |
-| `REDIS_URL` | production only | `redis://localhost:6380` (from `docker compose up -d`). Empty in dev → in-memory rate limits, no cache |
+| `REDIS_URL` | **yes** | `redis://localhost:6380` (from `docker compose up -d`). Rate limits, cache and the job queue |
+| `WORKER_CONCURRENCY` | no | `10` — AI jobs one worker runs at the same time |
 | `LOG_LEVEL` | no | `info` (`debug` for more detail) |
 | `SENTRY_DSN` | no | error monitoring. Empty → off |
 
@@ -110,6 +112,7 @@ The server checks these at startup and refuses to start with a clear list if som
 | root | `npm run lint` | ESLint for client and server |
 | root | `npm run check` | Format check + lint + client build — run before committing |
 | server | `npm run dev` | Start API with auto-restart (nodemon) |
+| server | `npm run dev:worker` / `npm run worker` | Start the background job worker (dev with auto-restart / production) |
 | client | `npm run dev` / `npm run build` | Vite dev server / production build |
 
 ## 🔌 API (so far)

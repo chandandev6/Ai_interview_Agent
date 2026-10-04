@@ -61,9 +61,13 @@ export const askAi = async (messages, { json = false } = {}) => {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// free models busy/flaky rehte hai — 2 retry (total 3 try), beech me thoda ruko taaki rate-limit hat jaaye
+// free models busy/flaky rehte hai — 2 retry (total 3 try). Request ke andar wale calls (start, answer) ke liye;
+// queue jobs retries: 0 dete hai kyunki waha BullMQ retry karta hai
 const DEFAULT_RETRIES = 2;
-const RETRY_DELAY_MS = 1500;
+const RETRY_BASE_MS = 1000;
+
+// exponential backoff: 1s, 2s, 4s... + thoda random (jitter) — sab users ek hi pal me dobara na maarein
+const retryDelay = (attempt) => RETRY_BASE_MS * 2 ** (attempt - 1) + Math.random() * 300;
 
 // AI ka jawab = untrusted input (jaise request body): parse → zod check → galat ho to dobara maango
 // return: schema se saaf kiya hua data. Sab try fail → error throw (caller credits refund karke 503 dega)
@@ -83,7 +87,7 @@ export const askAiJson = async (messages, schema, { retries = DEFAULT_RETRIES } 
             lastError = error;
         }
         getLogger().warn(`AI attempt ${attempt} failed: ${lastError.message}`);
-        if (attempt <= retries) await sleep(RETRY_DELAY_MS * attempt);
+        if (attempt <= retries) await sleep(retryDelay(attempt));
     }
     throw lastError;
 };

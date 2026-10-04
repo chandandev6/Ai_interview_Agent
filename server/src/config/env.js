@@ -42,8 +42,11 @@ const envSchema = z
         // Dashboard → Webhooks me jo secret khud likha — webhook ka signature isse check hota hai
         RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
 
-        // Redis (rate-limit counters + cache). Local: docker compose → redis://localhost:6380. Khaali → in-memory, no cache
-        REDIS_URL: z.string().optional(),
+        // Redis: rate-limit counters + cache + job queue (BullMQ). Local: `docker compose up -d` → redis://localhost:6380.
+        // Queue ke bina resume / report nahi bante, isliye ab hamesha zaruri
+        REDIS_URL: z.string().min(1, "is required (run `docker compose up -d`, then redis://localhost:6380)"),
+        // ek worker process ek saath kitne AI jobs chalaye (AI = network wait, CPU nahi — 10 aaram se)
+        WORKER_CONCURRENCY: z.coerce.number().int().positive().default(10),
 
         // kitna detail log ho: debug < info < warn < error. Production me "info" kaafi hai
         LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
@@ -52,9 +55,8 @@ const envSchema = z
     })
     .superRefine((env, ctx) => {
         // production me asli users ko email jaana hi chahiye — bina SMTP ke server start mat karo
-        // aur Redis bhi — kai server copies me bina Redis ke har copy ka rate limit alag hota
         if (env.NODE_ENV === "production") {
-            for (const key of ["SMTP_HOST", "SMTP_USER", "SMTP_PASS", "REDIS_URL"]) {
+            for (const key of ["SMTP_HOST", "SMTP_USER", "SMTP_PASS"]) {
                 if (!env[key]) ctx.addIssue({ code: "custom", path: [key], message: "is required in production" });
             }
         }

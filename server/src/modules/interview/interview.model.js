@@ -69,6 +69,9 @@ interviewSchema.index({ userId: 1, createdAt: -1 });
 // doosri ko E11000 (duplicate key) dega — isi se double-click par credit do baar nahi katta
 interviewSchema.index({ userId: 1, requestId: 1 }, { unique: true });
 
+// cleanup job har minute "starting"/"finishing" me purane interviews dhoondhta hai — bina index ke poori collection scan
+interviewSchema.index({ status: 1, updatedAt: 1 });
+
 const Interview = mongoose.model("Interview", interviewSchema);
 
 export default Interview;

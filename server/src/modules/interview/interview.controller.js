@@ -1,11 +1,11 @@
 import AppError from "../../utils/AppError.js";
 import { sendSuccess } from "../../utils/response.js";
 import {
-    finishInterview,
     getHistory,
     getInterview,
     getStats,
-    parseResume,
+    requestFinish,
+    requestResumeParse,
     startInterview,
     submitAnswer,
 } from "./interview.service.js";
@@ -15,8 +15,9 @@ export const uploadResume = async (req, res) => {
     if (!req.file) {
         throw new AppError(400, 'Please attach your resume as a PDF in the "resume" field.', "RESUME_MISSING");
     }
-    const resume = await parseResume(req.file.buffer);
-    return sendSuccess(res, { message: "Resume parsed", data: { resume } });
+    // 202 = "le liya, kaam chal raha hai" — result GET /api/jobs/:jobId se
+    const { jobId } = await requestResumeParse(req.userId, req.file.buffer);
+    return sendSuccess(res, { status: 202, message: "Your resume is being analysed", data: { jobId } });
 };
 
 // body validate() ne pehle hi saaf kar di hai
@@ -32,8 +33,10 @@ export const submitInterviewAnswer = async (req, res) => {
 };
 
 export const finishCurrentInterview = async (req, res) => {
-    const interview = await finishInterview(req.userId, req.params.id);
-    return sendSuccess(res, { message: "Interview completed", data: { interview } });
+    const { interview, jobId } = await requestFinish(req.userId, req.params.id);
+    // pehle hi complete (retry) → report turant. Warna report worker bana raha hai → jobId se poll karo
+    if (interview) return sendSuccess(res, { message: "Interview completed", data: { interview } });
+    return sendSuccess(res, { status: 202, message: "Your report is being prepared", data: { jobId } });
 };
 
 export const getInterviewById = async (req, res) => {

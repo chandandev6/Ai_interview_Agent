@@ -1,12 +1,15 @@
 import mongoose from "mongoose";
+import { UnrecoverableError } from "bullmq";
 import { PDFParse } from "pdf-parse";
 import AppError from "../../utils/AppError.js";
 import { askAiJson } from "../../lib/ai/openRouter.js";
 import User from "../user/user.model.js";
-import { addCredits, chargeCredits } from "../credit/credit.service.js";
+import { addCredits, chargeCredits, refundInterviewIfCharged } from "../credit/credit.service.js";
 import Interview from "./interview.model.js";
 import { getLogger } from "../../lib/logger.js";
 import { cached, cacheKeys, clearCache } from "../../lib/cache.js";
+import { enqueueAiJob } from "../../lib/queue/aiJobs.js";
+import { JOB } from "../../lib/queue/queues.js";
 import { CRITERIA, MODES, QUESTION_PLAN, TIME_LIMITS } from "./interview.modes.js";
 import { evaluationPrompt, questionsPrompt, reportPrompt, resumePrompt } from "./interview.prompts.js";
 import { evaluationAiSchema, questionsAiSchema, reportAiSchema, resumeAiSchema } from "./interview.ai-schemas.js";
@@ -31,8 +34,9 @@ const extractPdfText = async (buffer) => {
     }
 };
 
-// resume PDF → { skills, projects, experienceSummary }. PDF/text kahin save nahi hota
-export const parseResume = async (buffer) => {
+// API (fast): PDF → text yahi (ms lagta hai, aur galat PDF par user ko turant 400). Sirf slow AI kaam queue me.
+// 5MB PDF Redis me nahi bhejte — sirf text (max 12k chars). PDF/text kahin save nahi hota
+export const requestResumeParse = async (userId, buffer) => {
     const text = await extractPdfText(buffer);
     if (text.length < RESUME_MIN_CHARS) {
         throw new AppError(
@@ -41,11 +45,16 @@ export const parseResume = async (buffer) => {
             "RESUME_NO_TEXT",
         );
     }
+    const jobId = await enqueueAiJob(JOB.PARSE_RESUME, userId, { text: text.slice(0, RESUME_MAX_CHARS) });
+    return { jobId };
+};
 
+// WORKER: text → { skills, projects, experienceSummary }. retries: 0 — retry ab BullMQ karta hai (backoff ke saath)
+export const parseResumeText = async (text) => {
     try {
-        return await askAiJson(resumePrompt(text.slice(0, RESUME_MAX_CHARS)), resumeAiSchema);
+        return await askAiJson(resumePrompt(text), resumeAiSchema, { retries: 0 });
     } catch (error) {
-        getLogger().error({ err: error }, "Resume parse AI failed");
+        getLogger().warn({ err: error }, "Resume parse AI failed");
         throw new AppError(503, "AI is busy right now, please try again in a minute.", "AI_UNAVAILABLE");
     }
 };
@@ -255,8 +264,9 @@ const resolveFinishConflict = async (userId, interviewId) => {
     throw new AppError(409, "This interview is not in progress.", "INTERVIEW_NOT_ACTIVE");
 };
 
-// order: 1) claim (in_progress → finishing)  2) scores code se  3) AI text  4) save completed. Fail → wapas in_progress
-export const finishInterview = async (userId, interviewId) => {
+// API (fast): 1) claim (in_progress → finishing)  2) job queue me → { jobId }. Report worker banata hai (completeFinish).
+// Pehle se completed → { interview } (retry / network glitch ko wahi report)
+export const requestFinish = async (userId, interviewId) => {
     // 1. claim — double "Finish" ki doosri request yahi ruk jaati hai, aur finishing ke baad Step 8 naya answer nahi leta
     const interview = await Interview.findOneAndUpdate(
         {
@@ -269,13 +279,34 @@ export const finishInterview = async (userId, interviewId) => {
         { $set: { status: "finishing" } },
         { returnDocument: "after" },
     );
-    if (!interview) return resolveFinishConflict(userId, interviewId);
+    if (!interview) return { interview: await resolveFinishConflict(userId, interviewId) };
 
     try {
-        // 2. numbers
+        const jobId = await enqueueAiJob(JOB.FINISH_INTERVIEW, userId, { interviewId: String(interviewId) });
+        return { jobId };
+    } catch (error) {
+        // queue me nahi gaya → claim wapas, user dobara "Finish" daba sake
+        await Interview.updateOne({ _id: interviewId, status: "finishing" }, { $set: { status: "in_progress" } });
+        throw error;
+    }
+};
+
+// WORKER: 1) scores code se  2) AI text  3) save completed. Aakhri try bhi fail → wapas in_progress (user retry kare)
+export const completeFinish = async (interviewId, { finalAttempt }) => {
+    const interview = await Interview.findById(interviewId);
+    if (!interview) throw new UnrecoverableError("Interview not found.");
+    // pichhli try ne save kar diya tha, phir worker crash hua (job dobara aaya) — kaam ho chuka hai
+    if (interview.status === "completed") return { interviewId };
+    // UnrecoverableError = BullMQ retry nahi karega (dobara karne se bhi kuch nahi badlega)
+    if (interview.status !== "finishing") {
+        throw new UnrecoverableError("This interview is no longer being finished. Please click Finish again.");
+    }
+
+    try {
+        // 1. numbers
         const { averages, overallScore } = calculateScores(interview.questions, MODES[interview.mode].weights);
 
-        // 3. text — ek bhi jawab nahi diya to AI ka paisa kyun kharch karein
+        // 2. text — ek bhi jawab nahi diya to AI ka paisa kyun kharch karein
         let summary;
         if (!interview.questions.some((q) => q.answer)) {
             summary = {
@@ -296,33 +327,66 @@ export const finishInterview = async (userId, interviewId) => {
                         questions: interview.questions,
                     }),
                     reportAiSchema,
+                    { retries: 0 },
                 );
             } catch (error) {
-                getLogger().error({ err: error }, "Report AI failed");
+                getLogger().warn({ err: error }, "Report AI failed");
                 throw new AppError(503, "AI is busy right now, please click Finish again.", "AI_UNAVAILABLE");
             }
         }
 
-        // 4. save — status: finishing wali shart, taaki galti se kisi aur state ko overwrite na karein
-        const completed = await Interview.findOneAndUpdate(
+        // 3. save — status: finishing wali shart, taaki galti se kisi aur state ko overwrite na karein
+        await Interview.updateOne(
             { _id: interviewId, status: "finishing" },
-            {
-                $set: {
-                    status: "completed",
-                    completedAt: new Date(),
-                    report: { overallScore, averages, ...summary },
-                },
-            },
-            { returnDocument: "after", projection: INTERVIEW_VIEW, lean: true },
+            { $set: { status: "completed", completedAt: new Date(), report: { overallScore, averages, ...summary } } },
         );
         // naya completed interview = analytics badle → purane stats cache se hatao
-        await clearCache(cacheKeys.stats(userId));
-        return completed;
+        await clearCache(cacheKeys.stats(interview.userId));
+        // job result chhota rakho (Redis me 1 ghanta rehta hai) — client report GET /:id se laata hai
+        return { interviewId: String(interviewId) };
     } catch (error) {
-        // claim wapas — user dobara "Finish" daba sake
-        await Interview.updateOne({ _id: interviewId, status: "finishing" }, { $set: { status: "in_progress" } });
+        // beech ki try fail → BullMQ thodi der me dobara chalayega, status "finishing" hi rehne do.
+        // aakhri try → claim wapas, user dobara "Finish" daba sake
+        if (finalAttempt) {
+            await Interview.updateOne({ _id: interviewId, status: "finishing" }, { $set: { status: "in_progress" } });
+        }
         throw error;
     }
+};
+
+// WORKER (har minute): crash ke kaaran atke interviews theek karo — PRD ke 2 "known gaps"
+const STUCK_STARTING_MS = 10 * 60 * 1000; // start: 3 AI try × 60s ≈ 3 min max — 10 min = pakka atka hai
+const STUCK_FINISHING_MS = 15 * 60 * 1000; // finish job ke retries + queue me wait se kaafi zyada
+
+export const cleanupStuckInterviews = async () => {
+    const now = Date.now();
+
+    // 1. "starting" me atka (server credit kaatne ke baad, refund se pehle crash hua) → paise wapas + reserve hatao.
+    // Order: refund PEHLE, delete BAAD. Beech me crash → agli baar refund dobara nahi hoga (ledger check), bas delete
+    const stuckStarts = await Interview.find({
+        status: "starting",
+        updatedAt: { $lt: new Date(now - STUCK_STARTING_MS) },
+    })
+        .select("_id userId creditsUsed")
+        .limit(100)
+        .lean();
+    for (const stuck of stuckStarts) {
+        await refundInterviewIfCharged({
+            userId: stuck.userId,
+            interviewId: stuck._id,
+            amount: stuck.creditsUsed,
+            note: "Interview could not start (automatic refund)",
+        });
+        await Interview.deleteOne({ _id: stuck._id, status: "starting" });
+    }
+
+    // 2. "finishing" me atka (worker baar baar crash, job khatam) → wapas in_progress, user Finish dobara daba sake
+    const { modifiedCount: finishingReset } = await Interview.updateMany(
+        { status: "finishing", updatedAt: { $lt: new Date(now - STUCK_FINISHING_MS) } },
+        { $set: { status: "in_progress" } },
+    );
+
+    return { startingRefunded: stuckStarts.length, finishingReset };
 };
 
 // ek interview (report page) — sirf owner. Kisi aur ka = 404
