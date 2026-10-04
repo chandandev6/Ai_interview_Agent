@@ -1,0 +1,18 @@
+# local dev ke liye Redis — `docker compose up -d` (root se). Port 6380 kyunki 6379 par Pulse ka Redis chal raha hai
+services:
+    redis:
+        image: redis:7-alpine
+        container_name: interviewiq-redis
+        restart: unless-stopped
+        ports:
+            - "6380:6379"
+        volumes:
+            - interviewiq_redisdata:/data # container hata do tab bhi data bacha rahe
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 5s
+            timeout: 3s
+            retries: 5
+
+volumes:
+    interviewiq_redisdata:

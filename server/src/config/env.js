@@ -42,6 +42,9 @@ const envSchema = z
         // Dashboard → Webhooks me jo secret khud likha — webhook ka signature isse check hota hai
         RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
 
+        // Redis (rate-limit counters + cache). Local: docker compose → redis://localhost:6380. Khaali → in-memory, no cache
+        REDIS_URL: z.string().optional(),
+
         // kitna detail log ho: debug < info < warn < error. Production me "info" kaafi hai
         LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
         // sentry.io → Project → Client Keys (DSN). Na ho to error reporting band
@@ -49,8 +52,9 @@ const envSchema = z
     })
     .superRefine((env, ctx) => {
         // production me asli users ko email jaana hi chahiye — bina SMTP ke server start mat karo
+        // aur Redis bhi — kai server copies me bina Redis ke har copy ka rate limit alag hota
         if (env.NODE_ENV === "production") {
-            for (const key of ["SMTP_HOST", "SMTP_USER", "SMTP_PASS"]) {
+            for (const key of ["SMTP_HOST", "SMTP_USER", "SMTP_PASS", "REDIS_URL"]) {
                 if (!env[key]) ctx.addIssue({ code: "custom", path: [key], message: "is required in production" });
             }
         }

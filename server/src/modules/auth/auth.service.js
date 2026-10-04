@@ -6,7 +6,7 @@ import AppError from "../../utils/AppError.js";
 import { sendMail } from "../../lib/mail/mailer.js";
 import { getLogger } from "../../lib/logger.js";
 import User from "../user/user.model.js";
-import { findOrCreateGoogleUser, toSafeUser } from "../user/user.service.js";
+import { clearUserCache, findOrCreateGoogleUser, toSafeUser } from "../user/user.service.js";
 import { recordSignupBonus } from "../credit/credit.service.js";
 import { verificationEmail, passwordResetEmail } from "./auth.emails.js";
 
@@ -117,6 +117,7 @@ export const verifyEmailToken = async (token) => {
     user.verificationToken = undefined;
     user.verificationTokenExpires = undefined;
     await user.save();
+    await clearUserCache(user._id);
 
     return toSafeUser(user);
 };
@@ -192,6 +193,7 @@ export const resetPassword = async ({ token, password }) => {
     user.verificationToken = undefined;
     user.verificationTokenExpires = undefined;
     await user.save();
+    await clearUserCache(user._id);
 
     return toSafeUser(user);
 };

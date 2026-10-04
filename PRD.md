@@ -17,8 +17,8 @@
 ### 0.1 Current focus
 | | |
 |---|---|
-| **Now** | You: commit Step 21; (optional) Sentry DSNs. Razorpay webhook after deploy (Step 25) |
-| **Next** | Stage 6: Step 22 Redis (or Step 25 deploy a beta) |
+| **Now** | You: commit Step 22. Razorpay webhook after deploy (Step 25). Error monitoring → your own Pulse later |
+| **Next** | Stage 6: Step 23 background queue (BullMQ) (or Step 25 deploy a beta) |
 | **Milestone** | 🎯 MVP (end of Stage 4): target **2026-10-22** |
 | **Last updated** | 2026-10-04 |
 
@@ -31,9 +31,9 @@
 | 3. Interview frontend | 10–14 | 5/5 | `██████████` 100% | 2026-10-17 | ✅ |
 | 4. History & reports 🎯 MVP | 15–17 | 3/3 | `██████████` 100% | 2026-10-22 | ✅ |
 | 5. Payments | 18–20 | 3/3 | `██████████` 100% | 2026-10-28 | ✅ |
-| 6. Production & scale | 21–26 | 1/6 | `██░░░░░░░░` 17% | 2026-11-06 | 🟡 |
+| 6. Production & scale | 21–26 | 2/6 | `███░░░░░░░` 33% | 2026-11-06 | 🟡 |
 | 7. Differentiators | 27–33 | 0/7 | `░░░░░░░░░░` 0% | after launch | ⬜ |
-| **Total (Steps 1–26 + 2b)** | | **22/27** | `████████░░` 81% | | |
+| **Total (Steps 1–26 + 2b)** | | **23/27** | `█████████░` 85% | | |
 
 ### 0.3 Step board
 | # | Step | Area | Est. | Status | Started | Done | Notes |
@@ -59,8 +59,8 @@
 | 18 | Transaction ledger | 🖥️ | 0.5d | ✅ | 2026-10-04 | 2026-10-04 | `modules/credit`: Transaction model, charge/add in a MongoDB transaction, signup bonus row, `GET /api/credits/transactions`. Committed `6920f01` |
 | 19 | Pricing + payment gateway + webhook | 🖥️🎨 | 2d | ✅ | 2026-10-04 | 2026-10-04 | Razorpay: plans, order, verify (HMAC), idempotent webhook, `/pricing`. Real test payment ✅ 2026-10-05 (₹249 Pro → +1500). Webhook not set yet (needs public URL). Committed `6920f01` |
 | 20 | Account page | 🎨 | 0.5d | ✅ | 2026-10-04 | 2026-10-04 | `/account`: profile, balance, credit history, logout. Committed `6920f01` |
-| 21 | Logging & monitoring (pino, Sentry) | 🖥️ | 0.5d | ✅ | 2026-10-04 | 2026-10-04 | pino + pino-http (reqId, AsyncLocalStorage → `getLogger()`), Sentry server + client (optional DSN), `/ready`. Not committed |
-| 22 | Redis (rate limit store, cache) | 🖥️ | 1d | ⬜ | | | |
+| 21 | Logging & monitoring (pino, Sentry) | 🖥️ | 0.5d | ✅ | 2026-10-04 | 2026-10-04 | pino + pino-http (reqId, AsyncLocalStorage → `getLogger()`), Sentry server + client (optional DSN), `/ready`. Committed `a2e5cf7` |
+| 22 | Redis (rate limit store, cache) | 🖥️ | 1d | ✅ | 2026-10-05 | 2026-10-05 | ioredis + rate-limit-redis, cache-aside for current-user (60s) + stats (10 min) with invalidation, fail open, Redis on 6380 via docker compose. Not committed |
 | 23 | Background queue (BullMQ worker) | 🖥️ | 1–2d | ⬜ | | | |
 | 24 | Tests + CI | 🖥️🎨 | 1–2d | ⬜ | | | |
 | 25 | Deploy (Vercel + Render/Railway + Atlas) | 🚀 | 1d | ⬜ | | | |
@@ -71,6 +71,7 @@ Newest first. Format: `date · who · step · what changed`.
 
 | Date | Who | Step | What |
 |------|-----|------|------|
+| 2026-10-05 | Claude | 22 | ✅ Redis. **Infra:** root `docker-compose.yml` → `interviewiq-redis` (redis:7-alpine) on **6380** (6379 = Pulse's Redis), volume + healthcheck. `npm i ioredis rate-limit-redis`. Env `REDIS_URL` (empty in dev → in-memory limits, no cache; **required in production**). **`config/redis.js`:** one client (maxRetriesPerRequest 1, connectTimeout 2s, reconnect backoff max 2s), `isRedisReady()`, "down" logged once / "reconnected" once, `connectRedis()` awaited in `server.js` like MongoDB (exit if unreachable at boot — rate-limit-redis loads its Lua scripts at startup and would stay broken), `quit()` on shutdown. **Rate limits:** each limiter gets its own `RedisStore` (`rl:global:` / `rl:auth:` / `rl:ai:`), `passOnStoreError` (fail open), commands fail instantly when Redis isn't ready, limiter errors only logged while Redis is up (no log flood). **Cache (`lib/cache.js`):** `cached(key, ttl, load)` cache-aside + `clearCache(...keys)`, both skip Redis when it's down; key names in one place (`cacheKeys`). current-user cached 60 s (`getCurrentUserCached`); stats cached 10 min. **Invalidation (after commit, not inside the transaction):** `chargeCredits`, `addCredits`, payment `fulfillOrder`, verify email, reset password, Google login fixing an unverified account → user key; interview completed → stats key. credit.service imports `lib/cache` directly to avoid a circular import with user.service. `/ready` reports `redis: ok/down/disabled` but does **not** fail on Redis (all servers share one Redis → 503 everywhere would take the whole app down). README run steps + env table updated. **Verified:** `/ready` ok; cache hit proven (credit changed directly in DB → API still showed cached 500), `addCredits` → key deleted → fresh 827; TTLs 60/600; 100 requests allowed then 429, counter key in Redis; **server restart → still 429**; Redis stopped mid-run → `/ready` 200 `redis: down`, requests pass (fail open), current-user from MongoDB in 68 ms, 1 log line for 20 requests; Redis started → "Redis reconnected", limits work again; boot with Redis down → FATAL + exit 1; `REDIS_URL` empty → `redis: disabled`, in-memory limits. **Not tested:** stats key cleared on a real finish (needs the AI) — code path only. Test user + Redis keys deleted. `npm run check` passes. Not committed. |
 | 2026-10-05 | You + Claude | 19 | ✅ **Real Razorpay test payment.** Test keys in server/.env (webhook secret empty). First try failed: card 4111… counts as *international* (disabled on the account) → used an Indian test card. Order `order_TjvynjBjEwWBpf` (Pro, ₹249): Razorpay shows order paid + 1 captured payment (3 earlier failed attempts on the same order → no credit). DB: Payment row created → paid with paymentId + paidAt, exactly one `purchase` ledger row +1500, balance 450 → 1950. Ledger sum (1450) ≠ balance (1950) only because this account's 500 signup bonus (2026-08-31) predates the ledger (Step 18) — expected. Webhook still to set up after deploy. |
 | 2026-10-04 | Claude | 21 | ✅ Logging & monitoring. **Server:** `npm i pino pino-http @sentry/node` + dev `pino-pretty`. `lib/logger.js` (pino, level from new env `LOG_LEVEL`, pretty in development / JSON otherwise, redacts cookie/authorization) + `AsyncLocalStorage` → `getLogger()` gives the request's logger (with reqId) anywhere in services. `middlewares/requestLogger.js` (pino-http, first in `app.js`): reqId = incoming `X-Request-Id` if short+clean else UUID, echoed in `X-Request-Id` header; one line per request (method, url, status, time, userId), 4xx warn / 5xx error, `/health` + `/ready` not logged. `errorHandler` sets `res.err` (5xx stack lands on the request line, no double log) and adds `requestId` to error responses. All `console.*` replaced (only `env.js` left, it runs before the logger exists). `GET /ready`: readyState check then `db.admin().ping()` → 200 / 503. Sentry: `src/instrument.js` loaded via `node --import` in start/dev scripts, env `SENTRY_DSN` optional (empty → off), `setupExpressErrorHandler` before our handler (only 5xx sent), no PII. **Client:** `npm i @sentry/react`; `config/sentry.js` dynamic-imports Sentry only when `VITE_SENTRY_DSN` is set (empty → removed from the build entirely; set → own chunk, main bundle +0.3 KB). **Bug found & fixed:** `/^…$/.test(undefined)` is true ("undefined" string) → every request without the header got id "undefined" → setHeader threw → 500 everywhere; added `typeof` check. **Verified:** `/ready` 200 and 503 (no DB); 401/400/404 carry `X-Request-Id` + `requestId`; bad incoming id replaced; service log after an `await` keeps reqId; 500 line has reqId + stack; fake local Sentry ingest received the 500 but not the 401; `npm run dev` boots; `npm run check` passes. **Not tested:** real Sentry dashboard (needs your DSNs). Not committed. |
 | 2026-10-04 | You | 18–20 | ✅ Committed Stage 5 (`6920f01`). Session ended — next: Stage 6, Step 21 (logging & monitoring). |
@@ -590,8 +591,8 @@ Own passwords with bcrypt (not Firebase email auth) — chosen to learn hashing.
 - [x] `/ready` endpoint that pings the DB (Redis ping comes in Step 22)
 
 #### Step 22 🖥️ Redis ⏱️ 1 day
-- [ ] `ioredis`; move the rate-limit store to Redis (`rate-limit-redis`) so limits work across instances
-- [ ] Cache `current-user` (60 s) and `stats`; clear the cache on credit change
+- [x] `ioredis`; move the rate-limit store to Redis (`rate-limit-redis`) so limits work across instances
+- [x] Cache `current-user` (60 s) and `stats`; clear the cache on credit change
 
 #### Step 23 🖥️ Background queue ⏱️ 1–2 days
 - [ ] `bullmq` with a separate `src/worker.js` process

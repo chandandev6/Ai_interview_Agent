@@ -2,6 +2,7 @@
 import { env } from "./config/env.js";
 import app from "./app.js";
 import connectDB, { disconnectDB } from "./config/db.js";
+import { connectRedis, disconnectRedis } from "./config/redis.js";
 import { logger } from "./lib/logger.js";
 
 const PORT = env.PORT;
@@ -13,6 +14,12 @@ const startServer = async () => {
         logger.fatal({ err: error }, "Error in connecting to MongoDB");
         process.exit(1);
     }
+    try {
+        await connectRedis(); // REDIS_URL khaali ho to turant aage
+    } catch (error) {
+        logger.fatal({ err: error }, "Error in connecting to Redis (is `docker compose up -d` running?)");
+        process.exit(1);
+    }
 
     const server = app.listen(PORT, () => {
         logger.info(`Server running on ${PORT}`);
@@ -22,7 +29,7 @@ const startServer = async () => {
     const shutdown = (signal) => {
         logger.info(`${signal} received, shutting down`);
         server.close(async () => {
-            await disconnectDB();
+            await Promise.all([disconnectDB(), disconnectRedis()]);
             process.exit(0);
         });
         setTimeout(() => process.exit(1), 10000).unref();

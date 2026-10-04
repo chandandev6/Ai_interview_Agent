@@ -1,6 +1,7 @@
 import User from "./user.model.js";
 import AppError from "../../utils/AppError.js";
 import { recordSignupBonus } from "../credit/credit.service.js";
+import { cached, cacheKeys, clearCache } from "../../lib/cache.js";
 
 // response me bhejne se pehle secret fields hatao (login me .select("+password") kiya ho tab bhi)
 export const toSafeUser = (user) => {
@@ -24,6 +25,14 @@ export const getUserById = async (userId) => {
     return toSafeUser(user);
 };
 
+// har page load par aata hai — 60s Redis me rakho. Credits/verify badle to clearUserCache se turant hatate hai
+const USER_CACHE_TTL = 60;
+export const getCurrentUserCached = (userId) =>
+    cached(cacheKeys.user(userId), USER_CACHE_TTL, () => getUserById(userId));
+
+// user ka koi bhi field badle (credit, isVerified...) → ye bulao. DB write ke BAAD (transaction commit ke baad)
+export const clearUserCache = (userId) => clearCache(cacheKeys.user(userId));
+
 // Google login ke baad user lao, nahi hai to bna do — Google ne email verify kiya hai, isliye isVerified: true
 export const findOrCreateGoogleUser = async ({ email, name }) => {
     const user = await User.findOne({ email }).select("+password");
@@ -42,6 +51,7 @@ export const findOrCreateGoogleUser = async ({ email, name }) => {
         user.verificationToken = undefined;
         user.verificationTokenExpires = undefined;
         await user.save();
+        await clearUserCache(user._id);
     }
     return toSafeUser(user);
 };

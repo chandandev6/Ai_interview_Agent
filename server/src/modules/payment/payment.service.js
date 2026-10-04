@@ -11,6 +11,7 @@ import User from "../user/user.model.js";
 import Transaction from "../credit/transaction.model.js";
 import Payment from "./payment.model.js";
 import { getLogger } from "../../lib/logger.js";
+import { clearUserCache } from "../user/user.service.js";
 import { getPlan, PLANS } from "./payment.plans.js";
 
 const ensureEnabled = () => {
@@ -55,8 +56,8 @@ export const createOrder = async (userId, planId) => {
 
 // credit dene ka EK hi function — verify (browser) aur webhook (Razorpay) dono yahi bulate hai.
 // Order "paid" mark karna + credit + ledger row = ek MongoDB transaction. Order pehle se paid → kuch nahi (idempotent)
-const fulfillOrder = async (orderId, paymentId) =>
-    mongoose.connection.transaction(async (session) => {
+const fulfillOrder = async (orderId, paymentId) => {
+    const result = await mongoose.connection.transaction(async (session) => {
         // claim: sirf ek request isse "paid" kar payegi. Do saath aaye to MongoDB ek ko write-conflict deta hai,
         // mongoose usse dobara chalata hai — tab tak "paid" ho chuka → null → koi credit nahi
         const payment = await Payment.findOneAndUpdate(
@@ -89,8 +90,12 @@ const fulfillOrder = async (orderId, paymentId) =>
             ],
             { session },
         );
-        return { alreadyProcessed: false, creditsAdded: payment.credits, credit: user.credit };
+        return { alreadyProcessed: false, creditsAdded: payment.credits, credit: user.credit, userId: payment.userId };
     });
+    // commit ke baad — naya balance agli current-user call par DB se aaye
+    if (!result.alreadyProcessed) await clearUserCache(result.userId);
+    return result;
+};
 
 // 2. checkout success → browser se. Signature sahi + order isi user ka → credit
 export const verifyPayment = async (userId, { razorpay_order_id, razorpay_payment_id, razorpay_signature }) => {

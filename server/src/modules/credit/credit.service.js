@@ -4,10 +4,12 @@ import mongoose from "mongoose";
 import User from "../user/user.model.js";
 import Transaction from "./transaction.model.js";
 import { getLogger } from "../../lib/logger.js";
+// user.service se clearUserCache nahi — wo khud is file ko import karta hai (circular import se bacho)
+import { cacheKeys, clearCache } from "../../lib/cache.js";
 
 // credit kaato — sirf tab jab kaafi ho ($gte check + $inc ek hi atomic query). Kam ho to null (kuch nahi badla)
-export const chargeCredits = async (userId, amount, { interviewId } = {}) =>
-    mongoose.connection.transaction(async (session) => {
+export const chargeCredits = async (userId, amount, { interviewId } = {}) => {
+    const user = await mongoose.connection.transaction(async (session) => {
         const user = await User.findOneAndUpdate(
             { _id: userId, credit: { $gte: amount } },
             { $inc: { credit: -amount } },
@@ -20,10 +22,14 @@ export const chargeCredits = async (userId, amount, { interviewId } = {}) =>
         );
         return user;
     });
+    // commit ke BAAD purana balance cache se hatao (transaction ke andar hatate to commit se pehle koi purana phir bhar deta)
+    if (user) await clearCache(cacheKeys.user(userId));
+    return user;
+};
 
 // credit jodo (refund / purchase). paymentId diya hai aur pehle hi use ho chuka → unique index E11000 → poora rollback
-export const addCredits = async (userId, amount, { type, interviewId, paymentId, note }) =>
-    mongoose.connection.transaction(async (session) => {
+export const addCredits = async (userId, amount, { type, interviewId, paymentId, note }) => {
+    const user = await mongoose.connection.transaction(async (session) => {
         const user = await User.findOneAndUpdate(
             { _id: userId },
             { $inc: { credit: amount } },
@@ -35,6 +41,9 @@ export const addCredits = async (userId, amount, { type, interviewId, paymentId,
         });
         return user;
     });
+    await clearCache(cacheKeys.user(userId));
+    return user;
+};
 
 // naye user ko default credits milte hai (User model default) — passbook ki pehli row.
 // Fail ho to signup mat roko (bas log) — balance sahi hai, sirf history ki ek line kam hogi

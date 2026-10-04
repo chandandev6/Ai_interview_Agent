@@ -51,7 +51,7 @@ Ai_interview_Agent/
 
 ## 🚀 Run locally
 
-**Needs:** Node.js 22+, a MongoDB database (local or [Atlas](https://www.mongodb.com/atlas)), a Firebase project with Google sign-in enabled.
+**Needs:** Node.js 22+, a MongoDB database (local or [Atlas](https://www.mongodb.com/atlas)), a Firebase project with Google sign-in enabled, Docker (for Redis — optional in dev).
 
 ```bash
 # 1. install
@@ -63,8 +63,11 @@ npm install --prefix client
 cp server/.env.example server/.env
 cp client/.env.example client/.env
 
-# 3. run (two terminals)
-cd server && npm run dev         # http://localhost:8000/health → {"status":"ok"}
+# 3. Redis (rate limits + cache) on port 6380 — skip and leave REDIS_URL empty to run without it
+docker compose up -d
+
+# 4. run (two terminals)
+cd server && npm run dev         # http://localhost:8000/ready → {"status":"ready","db":"ok","redis":"ok"}
 cd client && npm run dev         # http://localhost:5173
 ```
 
@@ -83,6 +86,10 @@ cd client && npm run dev         # http://localhost:5173
 | `OPENROUTER_MODEL` | no | `anthropic/claude-haiku-4.5` |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | production only | Gmail: `smtp.gmail.com`, `587`, your Gmail, a 16-char [App Password](https://myaccount.google.com/apppasswords). Empty in dev → emails are printed in the server terminal |
 | `MAIL_FROM` | no | `InterviewIQ <you@gmail.com>` |
+| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET` | no | Razorpay Test Mode keys. Empty → buying credits is disabled |
+| `REDIS_URL` | production only | `redis://localhost:6380` (from `docker compose up -d`). Empty in dev → in-memory rate limits, no cache |
+| `LOG_LEVEL` | no | `info` (`debug` for more detail) |
+| `SENTRY_DSN` | no | error monitoring. Empty → off |
 
 The server checks these at startup and refuses to start with a clear list if something is missing or wrong.
 
@@ -92,6 +99,7 @@ The server checks these at startup and refuses to start with a clear list if som
 |---|---|
 | `VITE_FIREBASE_API_KEY` | Firebase web API key |
 | `VITE_SERVER_URL` | `http://localhost:8000` |
+| `VITE_SENTRY_DSN` | optional error monitoring. Empty → off |
 
 ## 🛠️ Scripts
 

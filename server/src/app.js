@@ -15,6 +15,7 @@ import { notFound, errorHandler } from "./middlewares/errorHandler.js";
 import { globalLimiter } from "./middlewares/rateLimit.js";
 import { requestLogger } from "./middlewares/requestLogger.js";
 import { env } from "./config/env.js";
+import { redis, isRedisReady } from "./config/redis.js";
 
 const app = express();
 
@@ -40,18 +41,32 @@ app.get("/health", (req, res) => {
     return res.json({ status: "ok" });
 });
 
+// Redis ka haal — sirf report, ready/not-ready iss par nahi: sab servers ek hi Redis use karte hai, to Redis down par
+// sab "not ready" ho jaate aur poora app band. Bina Redis ke bhi hum chal sakte hai (fail open), isliye nahi rokte
+const redisHealth = async () => {
+    if (!redis) return "disabled";
+    if (!isRedisReady()) return "down";
+    try {
+        await redis.ping();
+        return "ok";
+    } catch {
+        return "down";
+    }
+};
+
 // /health = process zinda hai; /ready = requests serve kar sakta hai (DB juda hai). Deploy platform isse traffic bhejta hai
 app.get("/ready", async (req, res) => {
+    const redisStatus = await redisHealth();
     // readyState 1 = connected. Pehle ye check, warna toote DB par ping 30s tak latka rahega
     if (mongoose.connection.readyState !== 1) {
-        return res.status(503).json({ status: "not ready", db: "disconnected" });
+        return res.status(503).json({ status: "not ready", db: "disconnected", redis: redisStatus });
     }
     try {
         await mongoose.connection.db.admin().ping();
-        return res.json({ status: "ready", db: "ok" });
+        return res.json({ status: "ready", db: "ok", redis: redisStatus });
     } catch (error) {
         req.log.warn({ err: error }, "Readiness DB ping failed");
-        return res.status(503).json({ status: "not ready", db: "ping failed" });
+        return res.status(503).json({ status: "not ready", db: "ping failed", redis: redisStatus });
     }
 });
 

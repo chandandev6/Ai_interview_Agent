@@ -6,6 +6,7 @@ import User from "../user/user.model.js";
 import { addCredits, chargeCredits } from "../credit/credit.service.js";
 import Interview from "./interview.model.js";
 import { getLogger } from "../../lib/logger.js";
+import { cached, cacheKeys, clearCache } from "../../lib/cache.js";
 import { CRITERIA, MODES, QUESTION_PLAN, TIME_LIMITS } from "./interview.modes.js";
 import { evaluationPrompt, questionsPrompt, reportPrompt, resumePrompt } from "./interview.prompts.js";
 import { evaluationAiSchema, questionsAiSchema, reportAiSchema, resumeAiSchema } from "./interview.ai-schemas.js";
@@ -303,7 +304,7 @@ export const finishInterview = async (userId, interviewId) => {
         }
 
         // 4. save — status: finishing wali shart, taaki galti se kisi aur state ko overwrite na karein
-        return await Interview.findOneAndUpdate(
+        const completed = await Interview.findOneAndUpdate(
             { _id: interviewId, status: "finishing" },
             {
                 $set: {
@@ -314,6 +315,9 @@ export const finishInterview = async (userId, interviewId) => {
             },
             { returnDocument: "after", projection: INTERVIEW_VIEW, lean: true },
         );
+        // naya completed interview = analytics badle → purane stats cache se hatao
+        await clearCache(cacheKeys.stats(userId));
+        return completed;
     } catch (error) {
         // claim wapas — user dobara "Finish" daba sake
         await Interview.updateOne({ _id: interviewId, status: "finishing" }, { $set: { status: "in_progress" } });
@@ -357,7 +361,11 @@ const TREND_POINTS = 20; // chart me aakhri itne interviews — 500 points ka ch
 const round1 = (expr) => ({ $round: [expr, 1] });
 
 // analytics: summary + skill averages + mode wise + score trend — sab ek hi aggregation (ek DB round trip)
-export const getStats = async (userId) => {
+// stats sirf interview complete hone par badalte hai (tab clear karte hai) — TTL bas safety ke liye
+const STATS_CACHE_TTL = 10 * 60;
+export const getStats = (userId) => cached(cacheKeys.stats(userId), STATS_CACHE_TTL, () => computeStats(userId));
+
+const computeStats = async (userId) => {
     const [result] = await Interview.aggregate([
         // aggregate() me Mongoose string → ObjectId khud nahi badalta (find() badalta hai) — khud karo, warna 0 match
         { $match: { userId: new mongoose.Types.ObjectId(userId), status: "completed" } },
