@@ -19,7 +19,14 @@ const envSchema = z
         CLIENT_URL: z.string().default("http://localhost:5173"),
         FIREBASE_PROJECT_ID: z.string().min(1),
 
-        OPENROUTER_API_KEY: z.string().min(1),
+        // kaunsi AI company: groq = bahut tez (free tier limits ke saath), openrouter = bahut saare models + backup list
+        AI_PROVIDER: z.enum(["openrouter", "groq"]).default("openrouter"),
+        // console.groq.com → API Keys. Sirf AI_PROVIDER=groq me zaruri (neeche superRefine)
+        GROQ_API_KEY: z.string().optional(),
+        GROQ_MODEL: z.string().default("openai/gpt-oss-120b"),
+
+        // sirf AI_PROVIDER=openrouter me zaruri (neeche superRefine)
+        OPENROUTER_API_KEY: z.string().optional(),
         OPENROUTER_MODEL: z.string().default("anthropic/claude-haiku-4.5"),
         // comma se alag backup models — main busy/rate-limited ho to OpenRouter agla try karta hai (free models ke liye zaruri)
         OPENROUTER_FALLBACK_MODELS: z
@@ -66,6 +73,12 @@ const envSchema = z
         SENTRY_DSN: z.string().optional(),
     })
     .superRefine((env, ctx) => {
+        // jo provider chuna hai, uski key honi hi chahiye — warna pehle interview par hi AI fail hota
+        const aiKey = env.AI_PROVIDER === "groq" ? "GROQ_API_KEY" : "OPENROUTER_API_KEY";
+        if (!env[aiKey]) {
+            ctx.addIssue({ code: "custom", path: [aiKey], message: `is required when AI_PROVIDER=${env.AI_PROVIDER}` });
+        }
+
         // production me asli users ko email jaana hi chahiye — bina SMTP ke server start mat karo
         if (env.NODE_ENV === "production") {
             for (const key of ["SMTP_HOST", "SMTP_USER", "SMTP_PASS"]) {

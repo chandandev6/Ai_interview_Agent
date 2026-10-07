@@ -57,3 +57,23 @@ describe("env rules (deploy)", () => {
         expect(parseEnv({ ...base, CLIENT_URL: "http://localhost:5173" }).success).toBe(true);
     });
 });
+
+describe("env rules (AI provider)", () => {
+    it("default provider is openrouter and needs its key", () => {
+        expect(parseEnv(base).data.AI_PROVIDER).toBe("openrouter");
+        expect(failedKeys(parseEnv({ ...base, OPENROUTER_API_KEY: undefined }))).toEqual(["OPENROUTER_API_KEY"]);
+    });
+
+    it("groq needs GROQ_API_KEY (OpenRouter key not needed)", () => {
+        const groq = { ...base, AI_PROVIDER: "groq", OPENROUTER_API_KEY: undefined };
+        expect(failedKeys(parseEnv(groq))).toEqual(["GROQ_API_KEY"]);
+
+        const result = parseEnv({ ...groq, GROQ_API_KEY: "gsk_test" });
+        expect(result.success).toBe(true);
+        expect(result.data.GROQ_MODEL).toBe("openai/gpt-oss-120b");
+    });
+
+    it("unknown provider is refused", () => {
+        expect(parseEnv({ ...base, AI_PROVIDER: "openai" }).success).toBe(false);
+    });
+});

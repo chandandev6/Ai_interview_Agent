@@ -40,6 +40,13 @@ services:
             sync: false # https://<your-app>.vercel.app
           - key: FIREBASE_PROJECT_ID
             sync: false
+          # Groq = tez AI (report 1-2 sec me). OpenRouter wapas chahiye to AI_PROVIDER=openrouter + uski key
+          - key: AI_PROVIDER
+            value: groq
+          - key: GROQ_API_KEY
+            sync: false
+          - key: GROQ_MODEL
+            value: openai/gpt-oss-120b
           - key: OPENROUTER_API_KEY
             sync: false
           # secret nahi, isliye yahi likha (khaali "" chhodte to zod ka default nahi lagta). Asli users se pehle paid model

@@ -23,7 +23,7 @@ Practise job interviews with an AI interviewer. Sign in, upload your resume, pic
 |---|---|
 | Frontend (`client/`) | React 19, Vite, Tailwind CSS 4, Redux Toolkit, React Router 7, Firebase Auth, motion |
 | Backend (`server/`) | Node.js 22, Express 5 (ES modules), MongoDB + Mongoose, JWT, bcryptjs, zod, nodemailer |
-| AI | OpenRouter (default model `anthropic/claude-haiku-4.5`) |
+| AI | Groq (`openai/gpt-oss-120b`, very fast) or OpenRouter (`anthropic/claude-haiku-4.5`) — `AI_PROVIDER` picks |
 
 ## 📁 Project structure
 
@@ -85,7 +85,10 @@ cd client && npm run dev         # http://localhost:5173
 | `JWT_SECRET` | **yes** | long random string, 16+ characters |
 | `CLIENT_URL` | no | `http://localhost:5173` (comma-separated for several) |
 | `FIREBASE_PROJECT_ID` | **yes** | your Firebase project id |
-| `OPENROUTER_API_KEY` | **yes** | from openrouter.ai |
+| `AI_PROVIDER` | no | `openrouter` (default) or `groq` |
+| `GROQ_API_KEY` | when `AI_PROVIDER=groq` | from console.groq.com |
+| `GROQ_MODEL` | no | `openai/gpt-oss-120b` |
+| `OPENROUTER_API_KEY` | when `AI_PROVIDER=openrouter` | from openrouter.ai |
 | `OPENROUTER_MODEL` | no | `anthropic/claude-haiku-4.5` |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | production only | Gmail: `smtp.gmail.com`, `587`, your Gmail, a 16-char [App Password](https://myaccount.google.com/apppasswords). Empty in dev → emails are printed in the server terminal |
 | `MAIL_FROM` | no | `InterviewIQ <you@gmail.com>` |
@@ -126,7 +129,7 @@ Later (paid): set `RUN_WORKER_IN_API=false` and enable the worker service at the
 
 **2. Render (server + Redis)**
 1. Render → **New → Blueprint** → pick this GitHub repo. It reads `render.yaml` and creates both services.
-2. Fill the secrets it asks for: `MONGODB_URL`, `FIREBASE_PROJECT_ID`, `OPENROUTER_API_KEY`, `SMTP_USER`, `SMTP_PASS`,
+2. Fill the secrets it asks for: `MONGODB_URL`, `FIREBASE_PROJECT_ID`, `GROQ_API_KEY`, `SMTP_USER`, `SMTP_PASS`,
    `MAIL_FROM`, Razorpay keys, `SENTRY_DSN` (optional ones can stay empty). Put `CLIENT_URL` = `https://placeholder.vercel.app`
    for now — you get the real URL in step 3.
 3. Check `https://interviewiq-api.onrender.com/ready` → `{"status":"ready","db":"ok","redis":"ok"}`.

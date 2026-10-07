@@ -2,10 +2,22 @@ import axios from "axios";
 import { env } from "../../config/env.js";
 import { getLogger } from "../logger.js";
 
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-
-// pehla main model, baaki backup — OpenRouter list me se jo free/available ho usse jawab dilwata hai
-const MODELS = [env.OPENROUTER_MODEL, ...env.OPENROUTER_FALLBACK_MODELS];
+// dono ka API OpenAI jaisa hai (same request/response shape) — sirf URL, key aur model alag
+const PROVIDERS = {
+    openrouter: {
+        url: "https://openrouter.ai/api/v1/chat/completions",
+        apiKey: env.OPENROUTER_API_KEY,
+        // pehla main model, baaki backup — OpenRouter list me se jo free/available ho usse jawab dilwata hai
+        models: [env.OPENROUTER_MODEL, ...env.OPENROUTER_FALLBACK_MODELS],
+    },
+    // Groq me backup list ("models") wala feature nahi — ek hi model. Fail par askAiJson / BullMQ retry karte hai
+    groq: {
+        url: "https://api.groq.com/openai/v1/chat/completions",
+        apiKey: env.GROQ_API_KEY,
+        models: [env.GROQ_MODEL],
+    },
+};
+const { url: AI_URL, apiKey: AI_KEY, models: MODELS } = PROVIDERS[env.AI_PROVIDER];
 
 // kuch models JSON ko ```json ... ``` me lapet dete hai ya aage-peeche text likh dete hai — sirf { ... } wala hissa lo
 const extractJson = (text) => {
@@ -21,7 +33,7 @@ const extractJson = (text) => {
 export const askAi = async (messages, { json = false } = {}) => {
     try {
         const response = await axios.post(
-            OPENROUTER_URL,
+            AI_URL,
             {
                 ...(MODELS.length > 1 ? { models: MODELS } : { model: MODELS[0] }),
                 messages,
@@ -29,7 +41,7 @@ export const askAi = async (messages, { json = false } = {}) => {
             },
             {
                 headers: {
-                    Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
+                    Authorization: `Bearer ${AI_KEY}`,
                     "Content-Type": "application/json",
                 },
                 timeout: 60000,
