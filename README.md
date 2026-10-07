@@ -45,6 +45,8 @@ Ai_interview_Agent/
 │       ├── modules/        one folder per feature: routes → controller → service → model (+ schema)
 │       ├── lib/            ai (OpenRouter), mail (nodemailer)
 │       └── utils/          AppError, sendSuccess
+├── render.yaml             Render Blueprint (API + workers + Key Value Redis)
+├── client/vercel.json      Vercel: /api proxy to Render + SPA fallback
 ├── PRD.md                  product plan + progress tracker
 └── CLAUDE.md               working rules and code conventions
 ```
@@ -90,6 +92,8 @@ cd client && npm run dev         # http://localhost:5173
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET` | no | Razorpay Test Mode keys. Empty → buying credits is disabled |
 | `REDIS_URL` | **yes** | `redis://localhost:6380` (from `docker compose up -d`). Rate limits, cache and the job queue |
 | `WORKER_CONCURRENCY` | no | `10` — AI jobs one worker runs at the same time |
+| `RUN_WORKER_IN_API` | no | `false`. `true` = the API process also runs the job workers (used on Render's free plan) |
+| `TRUST_PROXY_HOPS` | no | `1`. Production only: proxies in front of the server (Vercel proxy + Render = `2`) |
 | `LOG_LEVEL` | no | `info` (`debug` for more detail) |
 | `SENTRY_DSN` | no | error monitoring. Empty → off |
 
@@ -100,8 +104,48 @@ The server checks these at startup and refuses to start with a clear list if som
 | Variable | Notes |
 |---|---|
 | `VITE_FIREBASE_API_KEY` | Firebase web API key |
-| `VITE_SERVER_URL` | `http://localhost:8000` |
+| `VITE_SERVER_URL` | `http://localhost:8000`. **Leave unset on Vercel** (calls go to `/api` on the same site) |
 | `VITE_SENTRY_DSN` | optional error monitoring. Empty → off |
+
+## 🌍 Deploy (Vercel + Render + Atlas)
+
+```
+Browser ──HTTPS──> Vercel  (React build; /api/* is proxied ↓ — so the login cookie is first-party, works in Safari)
+                     └──> Render web service "interviewiq-api"  (API + job workers in one process, free plan)
+                             ├──> MongoDB Atlas (M0 free)
+                             └──> Render Key Value "interviewiq-redis" (rate limits, cache, BullMQ queue)
+```
+
+Free-plan trade-off: the Render service sleeps after 15 min without traffic, the first request then takes ~50 s.
+Later (paid): set `RUN_WORKER_IN_API=false` and enable the worker service at the bottom of `render.yaml`.
+
+**1. MongoDB Atlas**
+1. Create a free **M0** cluster in Mumbai or Singapore (close to Render's `singapore` region).
+2. Database Access → add a user. Network Access → allow `0.0.0.0/0` (Render's free plan has no fixed IP).
+3. Connect → Drivers → copy the `mongodb+srv://...` URL and put a database name in it (`.../ai_interview?...`).
+
+**2. Render (server + Redis)**
+1. Render → **New → Blueprint** → pick this GitHub repo. It reads `render.yaml` and creates both services.
+2. Fill the secrets it asks for: `MONGODB_URL`, `FIREBASE_PROJECT_ID`, `OPENROUTER_API_KEY`, `SMTP_USER`, `SMTP_PASS`,
+   `MAIL_FROM`, Razorpay keys, `SENTRY_DSN` (optional ones can stay empty). Put `CLIENT_URL` = `https://placeholder.vercel.app`
+   for now — you get the real URL in step 3.
+3. Check `https://interviewiq-api.onrender.com/ready` → `{"status":"ready","db":"ok","redis":"ok"}`.
+   If Render gave the service a different URL, change it in `client/vercel.json`.
+
+**3. Vercel (client)**
+1. Vercel → **Add New → Project** → this repo → **Root Directory: `client`** (Vite is detected automatically).
+2. Environment variables: `VITE_FIREBASE_API_KEY` (and `VITE_SENTRY_DSN` if you use it). **Do not set `VITE_SERVER_URL`.**
+3. Deploy → copy the URL (`https://<name>.vercel.app`) → Render → `CLIENT_URL` → save (Render redeploys).
+
+**4. Firebase + Razorpay**
+- Firebase console → Authentication → Settings → **Authorized domains** → add `<name>.vercel.app` (otherwise the Google popup fails).
+- Razorpay → Webhooks → `https://interviewiq-api.onrender.com/api/payment/webhook`, events `payment.captured` +
+  `payment.failed`, the secret = `RAZORPAY_WEBHOOK_SECRET`.
+
+**5. Test it live**
+1. `https://<name>.vercel.app/api/user/current-user` → 401 JSON from our server (the proxy works).
+2. Google login → refresh the page → still logged in (cookie works).
+3. Upload a resume → start an interview → finish → the report appears (the queue + workers work).
 
 ## 🛠️ Scripts
 

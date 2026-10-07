@@ -22,9 +22,9 @@ const app = express();
 
 // ORDER MATTERS — request upar se neeche har middleware se guzarti hai
 
-// production me Render/Railway ka proxy beech me hota hai — uske X-Forwarded-For se user ki asli IP lo
-// (local me off, warna koi bhi fake header bhej ke apni IP badal sakta hai)
-app.set("trust proxy", env.NODE_ENV === "production" ? 1 : false);
+// production me proxy beech me hote hai (Vercel /api rewrite → Render) — X-Forwarded-For se user ki asli IP lo.
+// Kitne proxy = TRUST_PROXY_HOPS (local me off, warna koi bhi fake header bhej ke apni IP badal sakta hai)
+app.set("trust proxy", env.NODE_ENV === "production" ? env.TRUST_PROXY_HOPS : false);
 
 app.use(requestLogger); // sabse pehle — har request ko ID mile aur har response (errors bhi) log ho
 app.use(helmet()); // security headers — sabse pehle, taaki error responses par bhi lage

@@ -1,0 +1,88 @@
+# Render Blueprint — Render dashboard → New → Blueprint → ye repo chuno. Render is file se services khud banata hai.
+# `sync: false` = secret, yaha nahi likhte — Render pehli baar dashboard me poochhega (repo me kabhi secret nahi)
+services:
+    # API + workers ek hi process me (free plan me Background Worker nahi milta). 15 min koi request na aaye to
+    # service so jaati hai — pehli request ~50s me jagati hai, uske baad normal
+    - type: web
+      name: interviewiq-api # URL banega https://interviewiq-api.onrender.com — alag mila to client/vercel.json me badlo
+      runtime: node
+      plan: free
+      region: singapore # India ke paas. Atlas cluster bhi Mumbai/Singapore me rakho (DB tak kam time)
+      rootDir: server
+      buildCommand: npm ci --omit=dev # dev tools (nodemon, vitest, in-memory Mongo) production me nahi chahiye
+      startCommand: npm start
+      healthCheckPath: /health # deploy tabhi live jab ye ok de — fail = purana version chalta rehta hai
+      envVars:
+          - key: NODE_VERSION
+            value: "22"
+          - key: NODE_ENV
+            value: production
+          - key: RUN_WORKER_IN_API
+            value: "true"
+          # Vercel (/api rewrite) + Render ka proxy = 2
+          - key: TRUST_PROXY_HOPS
+            value: "2"
+          - key: WORKER_CONCURRENCY
+            value: "5" # free plan = 512MB RAM, API bhi isi me hai
+          - key: LOG_LEVEL
+            value: info
+          # Redis ka URL neeche wali Key Value service se khud aata hai (private network, bahar se band)
+          - key: REDIS_URL
+            fromService:
+                type: keyvalue
+                name: interviewiq-redis
+                property: connectionString
+          - key: JWT_SECRET
+            generateValue: true # Render khud lamba random secret bana deta hai
+          - key: MONGODB_URL
+            sync: false
+          - key: CLIENT_URL
+            sync: false # https://<your-app>.vercel.app
+          - key: FIREBASE_PROJECT_ID
+            sync: false
+          - key: OPENROUTER_API_KEY
+            sync: false
+          # secret nahi, isliye yahi likha (khaali "" chhodte to zod ka default nahi lagta). Asli users se pehle paid model
+          - key: OPENROUTER_MODEL
+            value: nvidia/nemotron-3-super-120b-a12b:free
+          - key: OPENROUTER_FALLBACK_MODELS
+            value: google/gemma-4-31b-it:free,google/gemma-4-26b-a4b-it:free
+          - key: SMTP_HOST
+            value: smtp.gmail.com
+          - key: SMTP_PORT
+            value: "587"
+          - key: SMTP_USER
+            sync: false
+          - key: SMTP_PASS
+            sync: false
+          - key: MAIL_FROM
+            sync: false
+          - key: RAZORPAY_KEY_ID
+            sync: false
+          - key: RAZORPAY_KEY_SECRET
+            sync: false
+          - key: RAZORPAY_WEBHOOK_SECRET
+            sync: false
+          - key: SENTRY_DSN
+            sync: false
+
+    # Redis (Render Key Value) — rate limits, cache, BullMQ queue. Free = 25MB, restart par data jaata hai (sirf cache +
+    # chhote jobs hai, chalega). noeviction = memory bhar jaaye to jobs chupchap delete mat karo (BullMQ ka rule)
+    - type: keyvalue
+      name: interviewiq-redis
+      plan: free
+      region: singapore
+      maxmemoryPolicy: noeviction
+      ipAllowList: [] # sirf Render ke andar se — internet se koi connect nahi kar sakta
+
+
+    # Baad me (paid, ~$7/month): alag worker. Tab upar RUN_WORKER_IN_API "false" karo aur ye uncomment karo
+    # (envVars upar wali web service jaisi hi chahiye)
+    # - type: worker
+    #   name: interviewiq-worker
+    #   runtime: node
+    #   plan: starter
+    #   region: singapore
+    #   rootDir: server
+    #   buildCommand: npm ci --omit=dev
+    #   startCommand: npm run worker

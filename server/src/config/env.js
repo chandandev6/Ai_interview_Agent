@@ -50,6 +50,15 @@ const envSchema = z
         REDIS_URL: z.string().min(1, "is required (run `docker compose up -d`, then redis://localhost:6380)"),
         // ek worker process ek saath kitne AI jobs chalaye (AI = network wait, CPU nahi — 10 aaram se)
         WORKER_CONCURRENCY: z.coerce.number().int().positive().default(10),
+        // "true" = API process hi worker bhi chalaye (Render free plan — alag worker service paid hai).
+        // z.coerce.boolean nahi: wo "false" string ko bhi true maan leta hai
+        RUN_WORKER_IN_API: z
+            .enum(["true", "false"])
+            .default("false")
+            .transform((value) => value === "true"),
+        // production me aage kitne proxy hai: Render = 1, Vercel proxy (/api rewrite) + Render = 2.
+        // Galat number = rate limiter ko user ki jagah proxy ki IP dikhegi (sab users ek hi limit share karenge)
+        TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(1),
 
         // kitna detail log ho: debug < info < warn < error. Production me "info" kaafi hai
         LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
@@ -62,11 +71,24 @@ const envSchema = z
             for (const key of ["SMTP_HOST", "SMTP_USER", "SMTP_PASS"]) {
                 if (!env[key]) ctx.addIssue({ code: "custom", path: [key], message: "is required in production" });
             }
+            // cookie "secure" hai (sirf HTTPS par jaati hai) — http:// wala frontend login hi nahi kar payega
+            for (const url of env.CLIENT_URL.split(",")) {
+                if (!url.trim().startsWith("https://")) {
+                    ctx.addIssue({
+                        code: "custom",
+                        path: ["CLIENT_URL"],
+                        message: `must use https:// in production (got "${url}")`,
+                    });
+                }
+            }
         }
     });
 
-// safeParse throw nahi karta — { success, data, error } deta hai, taaki hum saaf message print kar sake
-const result = envSchema.safeParse(process.env);
+// safeParse throw nahi karta — { success, data, error } deta hai, taaki hum saaf message print kar sake.
+// Alag function taaki tests apna object de ke rules check kar sake (process.env chhede bina)
+export const parseEnv = (source) => envSchema.safeParse(source);
+
+const result = parseEnv(process.env);
 
 if (!result.success) {
     console.error("❌ Invalid environment variables in server/.env:");
