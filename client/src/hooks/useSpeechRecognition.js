@@ -1,8 +1,10 @@
 // user ka bola hua → text. Chrome/Edge me (webkitSpeechRecognition); Firefox me nahi → wahan type karna
 import { useCallback, useEffect, useRef, useState } from "react";
 
+// Brave me API dikhta hai par Google ki speech service block hai — mic "Listening" dikhata, likhta kuch nahi
+const isBrave = typeof navigator !== "undefined" && Boolean(navigator.brave);
 const SpeechRecognition =
-    typeof window !== "undefined" ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
+    typeof window !== "undefined" && !isBrave ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
 
 // ye errors aaye to dobara try karne ka fayda nahi — user ko type karne bolo
 const FATAL_ERRORS = {
