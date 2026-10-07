@@ -1,8 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://ai-interview-agent-l1fe.o
-nrender.com/api/:path*" },
+        { "source": "/api/:path*", "destination": "https://ai-interview-agent-l1fe.onrender.com/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
