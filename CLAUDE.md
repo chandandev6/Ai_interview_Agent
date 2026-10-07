@@ -37,6 +37,7 @@ I am a student. I am building this project to **learn**, not just to get working
 
 ## ✅ Checks before saying "done"
 - From the root: `npm run check` (Prettier check + ESLint client & server + client build)
+- From the root: `npm test` (server + client tests; needs `docker compose up -d` for Redis). New feature = add tests next to the existing ones (`server/test/`, `client/src/**/*.test.jsx`)
 - Server starts (`cd server && npm run dev`) and `/health` returns ok
 - Formatting: Prettier (root `.prettierrc.json`: 4 spaces, 120 cols). Run `npm run format` on files you change.
 - UI checks: headless `google-chrome` + a CDP script works; the user usually has dev servers running on 8000/5173. `server/.env` has real Gmail SMTP — set `SMTP_HOST=` empty for test processes so no real mail is sent.

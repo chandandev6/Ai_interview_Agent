@@ -1,6 +1,9 @@
 // .env ko startup par hi check karo — kuch missing/galat ho to server start hi mat hone do (fail fast)
-import "dotenv/config";
+import dotenv from "dotenv";
 import { z } from "zod";
+
+// tests apne fake values khud dete hai (vitest.config.js) — asli .env (Atlas, Gmail SMTP, Razorpay) kabhi na padhe
+if (process.env.NODE_ENV !== "test") dotenv.config({ quiet: true });
 
 // har variable ka rule: kaisa hona chahiye, aur na ho to default kya
 const envSchema = z

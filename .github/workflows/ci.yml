@@ -1,0 +1,73 @@
+# CI = har push / pull request par GitHub ek naya computer chalu karke code check karta hai:
+# format → lint → server tests → client tests → client build. Kuch bhi fail = commit par laal ❌
+name: CI
+
+on:
+    push:
+    pull_request:
+
+# same branch par naya push aaya to purana run band karo (minutes bachao)
+concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    check:
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+
+        # server tests ko asli Redis chahiye (rate limits, cache, BullMQ queue) — GitHub saath me ek Redis container chalata hai
+        services:
+            redis:
+                image: redis:7-alpine
+                ports:
+                    - 6379:6379
+                options: >-
+                    --health-cmd "redis-cli ping"
+                    --health-interval 5s
+                    --health-timeout 3s
+                    --health-retries 5
+
+        env:
+            TEST_REDIS_URL: redis://localhost:6379/1
+            # tests ke liye RAM wala MongoDB (~100MB binary) — is folder ko cache karte hai, har run me download na ho
+            MONGOMS_DOWNLOAD_DIR: /home/runner/.cache/mongodb-binaries
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: npm
+                  cache-dependency-path: |
+                      package-lock.json
+                      server/package-lock.json
+                      client/package-lock.json
+
+            - name: Cache MongoDB test binary
+              uses: actions/cache@v4
+              with:
+                  path: /home/runner/.cache/mongodb-binaries
+                  key: mongodb-binaries-${{ runner.os }}-${{ hashFiles('server/package-lock.json') }}
+
+            - name: Install dependencies
+              run: |
+                  npm ci
+                  npm ci --prefix server
+                  npm ci --prefix client
+
+            - name: Format check (Prettier)
+              run: npm run format:check
+
+            - name: Lint (ESLint)
+              run: npm run lint
+
+            - name: Server tests
+              run: npm test --prefix server
+
+            - name: Client tests
+              run: npm test --prefix client
+
+            - name: Client build
+              run: npm run build --prefix client

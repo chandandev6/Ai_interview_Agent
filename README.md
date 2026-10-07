@@ -111,9 +111,17 @@ The server checks these at startup and refuses to start with a clear list if som
 | root | `npm run format:check` | Check formatting without changing files |
 | root | `npm run lint` | ESLint for client and server |
 | root | `npm run check` | Format check + lint + client build — run before committing |
+| root | `npm test` | All server + client tests (needs Redis: `docker compose up -d`) |
+| server / client | `npm test` / `npm run test:watch` | Run tests once / re-run on every save |
 | server | `npm run dev` | Start API with auto-restart (nodemon) |
 | server | `npm run dev:worker` / `npm run worker` | Start the background job worker (dev with auto-restart / production) |
 | client | `npm run dev` / `npm run build` | Vite dev server / production build |
+
+## 🧪 Tests & CI
+
+- **Server** (`server/test/`, Vitest + Supertest): real HTTP requests against the Express app, a temporary in-memory MongoDB (`mongodb-memory-server`, replica set for transactions) and Redis DB 1 (your dev data in DB 0 is never touched). The AI and email are faked, so tests are fast, free and repeatable. Covers auth, the credits race (10 parallel starts with credits for 1), ownership, the job queue (incl. retries), payments (signatures, idempotent webhook, verify/webhook race) and the cleanup job.
+- **Client** (`client/src/**/*.test.jsx`, Vitest + Testing Library + jsdom): Setup page, Report page, job polling.
+- **CI** (`.github/workflows/ci.yml`): on every push / pull request GitHub runs format check → lint → server tests (with a Redis service) → client tests → build.
 
 ## 🔌 API (so far)
 
